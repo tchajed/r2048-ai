@@ -24,6 +24,8 @@ impl Row {
             if els[i] == els[i + 1] {
                 els[i] += 1;
                 els.remove(i + 1);
+                // check again, in case another merge is needed
+                continue;
             }
             i += 1;
         }
@@ -41,18 +43,14 @@ impl Row {
         self.reverse().shift_left().reverse()
     }
 
-    fn empty(&self) -> Vec<usize> {
+    fn empty(&self) -> Vec<u8> {
         let mut indices = Vec::new();
         for i in 0..4 {
             if self.0[i] == 0 {
-                indices.push(i);
+                indices.push(i as u8);
             }
         }
         indices
-    }
-
-    fn add(&mut self, i: usize, x: u8) {
-        self.0[i] = x;
     }
 }
 
@@ -82,14 +80,15 @@ mod row_tests {
         // this one is subtle
         assert_eq!(Row([2, 1, 0, 0]), Row([1, 1, 1, 0]).shift_left());
         assert_eq!(Row([0, 0, 1, 2]), Row([0, 1, 1, 1]).shift_right());
-        assert_eq!(Row([2, 3, 0, 0]), Row([1, 1, 2, 2]).shift_left());
+        assert_eq!(Row([3, 2, 0, 0]), Row([1, 1, 2, 2]).shift_left());
+        assert_eq!(Row([4, 5, 0, 0]), Row([2, 2, 3, 5]).shift_left());
     }
 
     #[test]
     fn empty() {
         assert_eq!(vec![0, 1, 2, 3], Row([0, 0, 0, 0]).empty());
         assert_eq!(vec![1, 2], Row([3, 0, 0, 2]).empty());
-        assert_eq!(Vec::<usize>::new(), Row([1, 3, 2, 1]).empty());
+        assert_eq!(Vec::<u8>::new(), Row([1, 3, 2, 1]).empty());
     }
 }
 
@@ -210,28 +209,25 @@ impl State {
             .collect()
     }
 
-    fn empty(&self) -> Vec<(usize, usize)> {
+    // returns linear indices of empty positions
+    pub fn empty(&self) -> Vec<u8> {
         let mut indices = Vec::new();
         self.0.iter().enumerate().for_each(|(i, &row)| {
-            indices.extend(row.empty().iter().map(|&j| (i, j)));
+            let i = i as u8;
+            indices.extend(row.empty().iter().map(|&j| i * 4 + j));
         });
         indices
     }
 
-    fn add(&mut self, i: usize, j: usize, x: u8) -> &mut Self {
-        self.0[i].add(j, x);
-        self
-    }
-
     /// Add a random tile to the board.
     pub fn rand_add<R: Rng>(&mut self, rng: &mut R) -> &mut Self {
-        if let Some(&(i, j)) = self.empty().choose(rng) {
+        if let Some(&i) = self.empty().choose(rng) {
             let x = if rng.gen_bool(Self::FOUR_SPAWN_PROB) {
                 2 // numbers are encoded by their power of 2
             } else {
                 1
             };
-            self.add(i, j, x);
+            self.set(i as usize, x);
         } else {
             // no move should leave the board this full
             panic!("attempt to add to a full board");
@@ -277,10 +273,15 @@ mod state_tests {
         )
     }
 
+    fn index(i: usize, j: usize) -> u8 {
+        (i * 4 + j) as u8
+    }
+
     #[test]
     fn empty() {
         assert_eq!(
-            vec![(0, 1), (0, 2), (1, 0), (3, 3)],
+            // these are linear indices, but compute them here for readability
+            vec![index(0, 1), index(0, 2), index(1, 0), index(3, 3)],
             State([
                 Row([1, 0, 0, 2]),
                 Row([0, 2, 1, 3]),

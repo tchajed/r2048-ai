@@ -13,7 +13,7 @@ fn random_game() -> u8 {
             panic!("game went too short");
         }
     }
-    return mgr.state().score();
+    return mgr.state().highest_tile();
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
