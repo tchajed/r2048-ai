@@ -1,20 +1,17 @@
-use r2048_ai::{rand_move, State};
-use rand::thread_rng;
+use r2048_ai::ai::rand_move;
+use r2048_ai::StateManager;
 
 fn main() {
-    let mut rng = thread_rng();
-    let mut s = State::default();
-    s.rand_add(&mut rng);
-    print!("{s}");
+    let mut mgr = StateManager::new();
+    print!("{}", mgr.state());
     loop {
-        if let Some((m, next_s)) = rand_move(&s, &mut rng) {
+        if let Some((m, s)) = rand_move(&mgr.state(), mgr.rng()) {
             println!("{:?}", m);
-            s = next_s;
-            s.rand_add(&mut rng);
-            print!("{s}");
+            mgr.next_state(s);
+            print!("{}", mgr.state());
         } else {
             break;
         }
     }
-    println!("score: {}", s.score());
+    println!("score: {}", mgr.state().score());
 }
