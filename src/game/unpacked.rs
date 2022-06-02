@@ -4,9 +4,6 @@
 //! packed representation (where a state is a single u64 and each cell is 4
 //! bits).
 
-// temporary, while still working
-#![allow(dead_code)]
-
 use std::fmt;
 
 use rand::seq::SliceRandom;
@@ -107,6 +104,10 @@ pub enum Move {
     Down,
 }
 
+impl Move {
+    pub const ALL: [Move; 4] = [Move::Left, Move::Right, Move::Up, Move::Down];
+}
+
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for row in self.0.iter() {
@@ -183,6 +184,24 @@ impl State {
         ])
     }
 
+    pub fn legal_moves(&self) -> Vec<(Move, Self)> {
+        Move::ALL
+            .iter()
+            .filter_map(|&m| {
+                let s = self.make_move(m);
+                if s != *self {
+                    Some((m, s))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    pub fn game_over(&self) -> bool {
+        self.legal_moves().is_empty()
+    }
+
     pub fn make_move(&self, m: Move) -> Self {
         match m {
             Move::Left => self.move_left(),
@@ -205,7 +224,7 @@ impl State {
         self
     }
 
-    fn rand_add<R: Rng>(&mut self, rng: &mut R) -> &mut Self {
+    pub fn rand_add<R: Rng>(&mut self, rng: &mut R) -> &mut Self {
         // if nothing is empty this will fail (and we won't add anything)
         if let Some(&(i, j)) = self.empty().choose(rng) {
             let x = if rng.gen_bool(Self::FOUR_SPAWN_PROB) {
@@ -216,6 +235,15 @@ impl State {
             self.add(i, j, x);
         }
         self
+    }
+
+    pub fn score(&self) -> u8 {
+        let mut best = 0;
+        for i in 0..16 {
+            let x = self.get(i);
+            best = best.max(x);
+        }
+        best
     }
 }
 
@@ -310,5 +338,25 @@ mod state_tests {
             ]),
             s.make_move(Move::Down),
         );
+    }
+
+    #[test]
+    fn printing() {
+        assert_eq!(
+            " 0  1  2  3
+ 4  5  6  7
+ 8  9 10 11
+12 13 14 15
+",
+            format!(
+                "{}",
+                State([
+                    Row([0, 1, 2, 3]),
+                    Row([4, 5, 6, 7]),
+                    Row([8, 9, 10, 11]),
+                    Row([12, 13, 14, 15]),
+                ])
+            )
+        )
     }
 }
