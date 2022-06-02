@@ -4,6 +4,9 @@
 //! packed representation (where a state is a single u64 and each cell is 4
 //! bits).
 
+// temporary, while still working
+#![allow(dead_code)]
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 struct Row([u8; 4]);
 
@@ -87,7 +90,7 @@ impl State {
     }
 
     fn transposed(&self) -> Self {
-        let mut new = self.clone();
+        let mut new = *self;
         new.transpose_in_place();
         new
     }
