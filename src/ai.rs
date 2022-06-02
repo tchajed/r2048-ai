@@ -60,7 +60,7 @@ mod weight {
 }
 
 fn state_weight_product(s: &State, w: weight::Matrix) -> f64 {
-    (0..16).map(|i| s.get(i) as f64 * w[i]).sum()
+    (0..16).map(|i| s.tile(i) as f64 * w[i]).sum()
 }
 
 fn float_cmp(x: f64, y: f64) -> std::cmp::Ordering {
@@ -71,12 +71,20 @@ fn float_cmp(x: f64, y: f64) -> std::cmp::Ordering {
     }
 }
 
-fn weight_terminal_score(s: &State) -> f64 {
+/// Score a terminal state using a weight matrix that encourages tiles to be in
+/// one corner.
+pub fn weight_score(s: &State) -> f64 {
     weight::W_MATRICES
         .iter()
         .map(|&w_mat| state_weight_product(s, w_mat))
         .max_by(|&x, &y| float_cmp(x, y))
         .unwrap()
+}
+
+/// Score a state just using the total value of all tiles, without regard to placement.
+pub fn sum_tiles_score(s: &State) -> f64 {
+    // weight everything equally
+    state_weight_product(s, [1f64; 16])
 }
 
 fn state_place(s: &State, i: u8, x: u8) -> State {
@@ -85,9 +93,12 @@ fn state_place(s: &State, i: u8, x: u8) -> State {
     next_s
 }
 
-fn expectimax_score(s: &State, search_depth: usize) -> f64 {
+fn expectimax_score<ScoreF>(s: &State, search_depth: usize, terminal_score: ScoreF) -> f64
+where
+    ScoreF: Fn(&State) -> f64,
+{
     if search_depth == 0 {
-        return weight_terminal_score(s);
+        return terminal_score(s);
     }
     // we want to the expected value of the expectimax score over all the random
     // placements that could happen in this state
@@ -96,22 +107,37 @@ fn expectimax_score(s: &State, search_depth: usize) -> f64 {
     let total_weight = poss.len() as f64;
     for i in poss.into_iter() {
         for (p, x) in [(State::TWO_SPAWN_PROB, 1), (State::FOUR_SPAWN_PROB, 2)] {
-            weighted_sum += p * expectimax_best(&state_place(s, i, x), search_depth - 1)
+            let next_s = state_place(s, i, x);
+            weighted_sum += p * expectimax_best(&next_s, search_depth - 1, &terminal_score)
                 .map(|(_, _, s)| s)
-                .unwrap_or_else(|| weight_terminal_score(s));
+                .unwrap_or_else(|| terminal_score(s));
         }
     }
     return weighted_sum / total_weight;
 }
 
-fn expectimax_best(s: &State, search_depth: usize) -> Option<(Move, State, f64)> {
+fn expectimax_best<ScoreF>(
+    s: &State,
+    search_depth: usize,
+    terminal_score: ScoreF,
+) -> Option<(Move, State, f64)>
+where
+    ScoreF: Fn(&State) -> f64,
+{
     let scored_moves = s
         .legal_moves()
         .into_iter()
-        .map(|(m, s)| (m, s, expectimax_score(&s, search_depth)));
+        .map(|(m, s)| (m, s, expectimax_score(&s, search_depth, &terminal_score)));
     scored_moves.max_by(|&(_, _, score1), &(_, _, score2)| float_cmp(score1, score2))
 }
 
-pub fn expectimax_move(s: &State, search_depth: usize) -> Option<(Move, State)> {
-    expectimax_best(s, search_depth).map(|(m, s, _)| (m, s))
+pub fn expectimax_move<ScoreF>(
+    s: &State,
+    search_depth: usize,
+    terminal_score: ScoreF,
+) -> Option<(Move, State)>
+where
+    ScoreF: Fn(&State) -> f64,
+{
+    expectimax_best(s, search_depth, terminal_score).map(|(m, s, _)| (m, s))
 }

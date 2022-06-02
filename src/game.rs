@@ -123,9 +123,16 @@ impl State {
     pub const FOUR_SPAWN_PROB: f64 = 0.1;
     pub const TWO_SPAWN_PROB: f64 = 1.0 - Self::FOUR_SPAWN_PROB;
 
-    /// Get a tile by linear index (in 0..16).
-    pub fn get(&self, i: usize) -> u8 {
+    /// Get a cell by linear index (in 0..16).
+    fn get(&self, i: usize) -> u8 {
         self.0[i / 4].0[i % 4]
+    }
+
+    /// Get a tile's value by linear index.
+    ///
+    /// This will be the power-of-two seen in the game.
+    pub fn tile(&self, i: usize) -> u32 {
+        2u32.pow(self.get(i).into())
     }
 
     /// Set a tile by linear index.
@@ -234,8 +241,10 @@ impl State {
         self
     }
 
-    pub fn highest_tile(&self) -> u8 {
-        (0..16).map(|i| self.get(i)).max().unwrap()
+    /// Return the highest tile, converted to the usual power of two.
+    pub fn highest_tile(&self) -> u32 {
+        let exp = (0..16).map(|i| self.get(i)).max().unwrap();
+        (2_u32).pow(exp.into())
     }
 }
 
