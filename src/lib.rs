@@ -1,19 +1,26 @@
 use rand::prelude::ThreadRng;
 use rand::thread_rng;
+use rand::Rng;
 
 pub mod ai;
 pub mod game;
 
 use game::State;
 
-pub struct StateManager {
-    rng: ThreadRng,
+pub struct StateManager<R: Rng> {
+    rng: R,
     s: State,
 }
 
-impl StateManager {
+impl StateManager<ThreadRng> {
     pub fn new() -> Self {
-        let mut rng = thread_rng();
+        Self::from_rng(thread_rng())
+    }
+}
+
+impl<R: Rng> StateManager<R> {
+    pub fn from_rng(rng: R) -> Self {
+        let mut rng = rng;
         let mut s = State::default();
         s.rand_add(&mut rng);
         Self { rng, s }
@@ -23,7 +30,7 @@ impl StateManager {
         self.s
     }
 
-    pub fn rng(&mut self) -> &mut ThreadRng {
+    pub fn rng(&mut self) -> &mut R {
         &mut self.rng
     }
 
