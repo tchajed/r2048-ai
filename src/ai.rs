@@ -87,19 +87,20 @@ pub fn sum_tiles_score(s: &State) -> f64 {
     state_weight_product(s, [1f64; 16])
 }
 
-fn state_place(s: &State, i: u8, x: u8) -> State {
-    let mut next_s = *s;
-    next_s.set(i as usize, x);
-    next_s
-}
-
 fn expectimax_score<ScoreF>(s: &State, search_depth: usize, terminal_score: ScoreF) -> f64
 where
-    ScoreF: Fn(&State) -> f64,
+    ScoreF: Fn(&State) -> f64 + 'static + Clone,
 {
     if search_depth == 0 {
         return terminal_score(s);
     }
+
+    fn state_place(s: &State, i: u8, x: u8) -> State {
+        let mut next_s = *s;
+        next_s.set(i as usize, x);
+        next_s
+    }
+
     // we want to the expected value of the expectimax score over all the random
     // placements that could happen in this state
     let mut weighted_sum: f64 = 0.0;
@@ -108,7 +109,7 @@ where
     for i in poss.into_iter() {
         for (p, x) in [(State::TWO_SPAWN_PROB, 1), (State::FOUR_SPAWN_PROB, 2)] {
             let next_s = state_place(s, i, x);
-            weighted_sum += p * expectimax_best(&next_s, search_depth - 1, &terminal_score)
+            weighted_sum += p * expectimax_best(&next_s, search_depth - 1, terminal_score.clone())
                 .map(|(_, _, s)| s)
                 .unwrap_or_else(|| terminal_score(s));
         }
@@ -122,22 +123,33 @@ fn expectimax_best<ScoreF>(
     terminal_score: ScoreF,
 ) -> Option<(Move, State, f64)>
 where
-    ScoreF: Fn(&State) -> f64,
+    ScoreF: Fn(&State) -> f64 + 'static + Clone,
 {
-    let scored_moves = s
-        .legal_moves()
-        .into_iter()
-        .map(|(m, s)| (m, s, expectimax_score(&s, search_depth, &terminal_score)));
+    let scored_moves = s.legal_moves().into_iter().map(|(m, s)| {
+        (
+            m,
+            s,
+            expectimax_score(&s, search_depth, terminal_score.clone()),
+        )
+    });
     scored_moves.max_by(|&(_, _, score1), &(_, _, score2)| float_cmp(score1, score2))
 }
 
-pub fn expectimax_move<ScoreF>(
+fn expectimax_move<ScoreF>(
     s: &State,
     search_depth: usize,
     terminal_score: ScoreF,
 ) -> Option<(Move, State)>
 where
-    ScoreF: Fn(&State) -> f64,
+    ScoreF: Fn(&State) -> f64 + 'static + Clone,
 {
     expectimax_best(s, search_depth, terminal_score).map(|(m, s, _)| (m, s))
+}
+
+pub fn expectimax_weight_move(s: &State, search_depth: usize) -> Option<(Move, State)> {
+    expectimax_move(s, search_depth, weight_score)
+}
+
+pub fn expectimax_sum_move(s: &State, search_depth: usize) -> Option<(Move, State)> {
+    expectimax_move(s, search_depth, sum_tiles_score)
 }

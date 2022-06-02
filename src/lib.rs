@@ -13,6 +13,7 @@ use game::State;
 pub struct StateManager<R: Rng> {
     rng: R,
     s: State,
+    moves: u32,
 }
 
 impl StateManager<ThreadRng> {
@@ -28,19 +29,21 @@ impl<R: Rng> StateManager<R> {
         // game starts with two tiles
         s.rand_add(&mut rng);
         s.rand_add(&mut rng);
-        Self { rng, s }
+        Self { rng, s, moves: 0 }
     }
 
     pub fn state(&self) -> State {
         self.s
     }
 
-    pub fn rng(&mut self) -> &mut R {
-        &mut self.rng
-    }
-
     pub fn next_state(&mut self, s: State) {
         self.s = s;
         self.s.rand_add(&mut self.rng);
+        self.moves += 1;
+    }
+
+    /// Get the number of moves made so far.
+    pub fn moves(&self) -> u32 {
+        self.moves
     }
 }
