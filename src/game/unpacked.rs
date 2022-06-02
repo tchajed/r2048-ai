@@ -23,7 +23,7 @@ impl Row {
             i += 1;
         }
         let mut new_row = [0u8; 4];
-        new_row[4 - els.len()..4].clone_from_slice(&els);
+        new_row[..els.len()].clone_from_slice(&els);
         Row(new_row)
     }
 
@@ -37,6 +37,36 @@ impl Row {
     }
 }
 
+#[cfg(test)]
+mod row_tests {
+    use super::Row;
+
+    #[test]
+    fn reverse() {
+        assert_eq!(Row([3, 2, 1, 0]), Row([0, 1, 2, 3]).reverse());
+        assert_eq!(Row([0, 1, 2, 3]), Row([0, 1, 2, 3]).reverse().reverse());
+    }
+
+    #[test]
+    fn no_collapsing() {
+        assert_eq!(Row([1, 2, 3, 0]), Row([0, 1, 2, 3]).shift_left());
+        assert_eq!(Row([1, 0, 0, 0]), Row([0, 0, 1, 0]).shift_left());
+        assert_eq!(Row([1, 0, 0, 0]), Row([0, 0, 0, 1]).shift_left());
+        assert_eq!(Row([5, 3, 0, 0]), Row([0, 5, 0, 3]).shift_left());
+    }
+
+    #[test]
+    fn collapse() {
+        assert_eq!(Row([2, 0, 0, 0]), Row([0, 1, 0, 1]).shift_left());
+        assert_eq!(Row([4, 6, 0, 0]), Row([4, 5, 0, 5]).shift_left());
+        assert_eq!(Row([2, 2, 0, 0]), Row([1, 1, 1, 1]).shift_left());
+        // this one is subtle
+        assert_eq!(Row([2, 1, 0, 0]), Row([1, 1, 1, 0]).shift_left());
+        assert_eq!(Row([0, 0, 1, 2]), Row([0, 1, 1, 1]).shift_right());
+        assert_eq!(Row([2, 3, 0, 0]), Row([1, 1, 2, 2]).shift_left());
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct State([Row; 4]);
 
@@ -45,7 +75,7 @@ impl State {
         self.0[i].0[j]
     }
 
-    fn transpose(&mut self) -> &mut Self {
+    fn transpose_in_place(&mut self) -> &mut Self {
         for i in 0..3 {
             for j in (i + 1)..4 {
                 let tmp = self.get(i, j);
@@ -54,5 +84,36 @@ impl State {
             }
         }
         self
+    }
+
+    fn transposed(&self) -> Self {
+        let mut new = self.clone();
+        new.transpose_in_place();
+        new
+    }
+}
+
+#[cfg(test)]
+mod state_tests {
+
+    use super::{Row, State};
+
+    #[test]
+    fn test_transpose() {
+        assert_eq!(
+            State([
+                Row([0, 4, 8, 12]),
+                Row([1, 5, 9, 13]),
+                Row([2, 6, 10, 14]),
+                Row([3, 7, 11, 15]),
+            ]),
+            State([
+                Row([0, 1, 2, 3]),
+                Row([4, 5, 6, 7]),
+                Row([8, 9, 10, 11]),
+                Row([12, 13, 14, 15]),
+            ])
+            .transposed()
+        );
     }
 }
