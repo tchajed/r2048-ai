@@ -125,19 +125,19 @@ impl fmt::Display for State {
 impl State {
     const FOUR_SPAWN_PROB: f64 = 0.1;
 
-    // get by linear index
-    fn get(&self, i: usize) -> u8 {
+    /// Get a tile by linear index (in 0..16).
+    pub fn get(&self, i: usize) -> u8 {
         self.0[i / 4].0[i % 4]
     }
 
-    // set by linear index
+    /// set by linear index
     fn set(&mut self, i: usize, x: u8) {
         self.0[i / 4].0[i % 4] = x;
     }
 
-    // rotate right
-    //
-    // internally used to implement up/down movement using only left/right
+    /// rotate right
+    ///
+    /// internally used to implement up/down movement using only left/right
     fn rotate_right(&self) -> Self {
         let mut new = Self::default();
         // right rotation indices, computed by hand
@@ -150,9 +150,9 @@ impl State {
         new
     }
 
-    // rotate left
-    //
-    // internally used to implement up/down movement using only left/right
+    /// rotate left
+    ///
+    /// internally used to implement up/down movement using only left/right
     fn rotate_left(&self) -> Self {
         let mut new = Self::default();
         for (i, &idx) in [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3]
@@ -184,6 +184,18 @@ impl State {
         ])
     }
 
+    fn make_move(&self, m: Move) -> Self {
+        match m {
+            Move::Left => self.move_left(),
+            Move::Right => self.move_right(),
+            Move::Up => self.rotate_left().move_left().rotate_right(),
+            Move::Down => self.rotate_right().move_left().rotate_left(),
+        }
+    }
+
+    /// Generate legal moves and immediate next states.
+    ///
+    /// Only moves that change the state are legal.
     pub fn legal_moves(&self) -> Vec<(Move, Self)> {
         Move::ALL
             .iter()
@@ -196,19 +208,6 @@ impl State {
                 }
             })
             .collect()
-    }
-
-    pub fn game_over(&self) -> bool {
-        self.legal_moves().is_empty()
-    }
-
-    pub fn make_move(&self, m: Move) -> Self {
-        match m {
-            Move::Left => self.move_left(),
-            Move::Right => self.move_right(),
-            Move::Up => self.rotate_left().move_left().rotate_right(),
-            Move::Down => self.rotate_right().move_left().rotate_left(),
-        }
     }
 
     fn empty(&self) -> Vec<(usize, usize)> {
@@ -224,8 +223,8 @@ impl State {
         self
     }
 
+    /// Add a random tile to the board.
     pub fn rand_add<R: Rng>(&mut self, rng: &mut R) -> &mut Self {
-        // if nothing is empty this will fail (and we won't add anything)
         if let Some(&(i, j)) = self.empty().choose(rng) {
             let x = if rng.gen_bool(Self::FOUR_SPAWN_PROB) {
                 2 // numbers are encoded by their power of 2
@@ -233,17 +232,15 @@ impl State {
                 1
             };
             self.add(i, j, x);
+        } else {
+            // no move should leave the board this full
+            panic!("attempt to add to a full board");
         }
         self
     }
 
-    pub fn score(&self) -> u8 {
-        let mut best = 0;
-        for i in 0..16 {
-            let x = self.get(i);
-            best = best.max(x);
-        }
-        best
+    pub fn highest_tile(&self) -> u8 {
+        (0..16).map(|i| self.get(i)).max().unwrap()
     }
 }
 

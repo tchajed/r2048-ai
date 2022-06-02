@@ -22,6 +22,8 @@ impl<R: Rng> StateManager<R> {
     pub fn from_rng(rng: R) -> Self {
         let mut rng = rng;
         let mut s = State::default();
+        // game starts with two tiles
+        s.rand_add(&mut rng);
         s.rand_add(&mut rng);
         Self { rng, s }
     }
