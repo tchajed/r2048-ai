@@ -5,15 +5,11 @@ fn main() {
     let mut mgr = StateManager::new();
     let mut i = 0;
     print!("{}", mgr.state());
-    loop {
-        if let Some((m, s)) = rand_move(&mgr.state(), mgr.rng()) {
-            println!("{:?}", m);
-            mgr.next_state(s);
-            print!("{}", mgr.state());
-            i += 1;
-        } else {
-            break;
-        }
+    while let Some((m, s)) = rand_move(&mgr.state(), mgr.rng()) {
+        println!("{:?}", m);
+        mgr.next_state(s);
+        print!("{}", mgr.state());
+        i += 1;
     }
     println!("score: {}  moves: {i}", mgr.state().highest_tile());
 }

@@ -113,11 +113,7 @@ impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for row in self.0.iter() {
             let row = row.0;
-            write!(
-                f,
-                "{:>2} {:>2} {:>2} {:>2}\n",
-                row[0], row[1], row[2], row[3]
-            )?;
+            writeln!(f, "{:>2} {:>2} {:>2} {:>2}", row[0], row[1], row[2], row[3])?;
         }
         Ok(())
     }
