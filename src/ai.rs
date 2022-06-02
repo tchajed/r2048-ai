@@ -146,10 +146,12 @@ where
     expectimax_best(s, search_depth, terminal_score).map(|(m, s, _)| (m, s))
 }
 
-pub fn expectimax_weight_move(s: &State, search_depth: usize) -> Option<(Move, State)> {
+pub fn expectimax_weight_move(s: &State) -> Option<(Move, State)> {
+    let search_depth = if s.empty().len() < 5 { 3 } else { 2 };
     expectimax_move(s, search_depth, weight_score)
 }
 
-pub fn expectimax_sum_move(s: &State, search_depth: usize) -> Option<(Move, State)> {
+pub fn expectimax_sum_move(s: &State) -> Option<(Move, State)> {
+    let search_depth = if s.empty().len() < 5 { 3 } else { 2 };
     expectimax_move(s, search_depth, sum_tiles_score)
 }

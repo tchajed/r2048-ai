@@ -4,7 +4,7 @@ use r2048_ai::StateManager;
 fn main() {
     let mut mgr = StateManager::new();
     print!("{}", mgr.state());
-    while let Some((m, s)) = expectimax_weight_move(&mgr.state(), 2) {
+    while let Some((m, s)) = expectimax_weight_move(&mgr.state()) {
         println!("{:?}", m);
         mgr.next_state(s);
         print!("{}", mgr.state());
