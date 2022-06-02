@@ -1,4 +1,5 @@
-pub use crate::game::{Move, State};
+//! AI to automatically play 2048.
+use crate::game::{Move, State};
 use rand::seq::SliceRandom;
 use rand::Rng;
 

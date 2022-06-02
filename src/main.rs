@@ -15,5 +15,5 @@ fn main() {
             break;
         }
     }
-    println!("score: {}  moves: {i}", mgr.state().score());
+    println!("score: {}  moves: {i}", mgr.state().highest_tile());
 }
