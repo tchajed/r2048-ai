@@ -95,6 +95,8 @@ mod row_tests {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct State([Row; 4]);
 
+assert_eq_size!([u8; 16], State);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Move {
     Left,

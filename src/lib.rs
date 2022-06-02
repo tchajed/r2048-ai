@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate static_assertions;
+
 use rand::prelude::ThreadRng;
 use rand::thread_rng;
 use rand::Rng;
