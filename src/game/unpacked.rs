@@ -7,6 +7,11 @@
 // temporary, while still working
 #![allow(dead_code)]
 
+use std::fmt;
+
+use rand::seq::SliceRandom;
+use rand::Rng;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 struct Row([u8; 4]);
 
@@ -39,14 +44,18 @@ impl Row {
         self.reverse().shift_left().reverse()
     }
 
-    fn empty(&self) -> Vec<u8> {
+    fn empty(&self) -> Vec<usize> {
         let mut indices = Vec::new();
         for i in 0..4 {
             if self.0[i] == 0 {
-                indices.push(i as u8);
+                indices.push(i);
             }
         }
         indices
+    }
+
+    fn add(&mut self, i: usize, x: u8) {
+        self.0[i] = x;
     }
 }
 
@@ -83,67 +92,164 @@ mod row_tests {
     fn empty() {
         assert_eq!(vec![0, 1, 2, 3], Row([0, 0, 0, 0]).empty());
         assert_eq!(vec![1, 2], Row([3, 0, 0, 2]).empty());
-        assert_eq!(Vec::<u8>::new(), Row([1, 3, 2, 1]).empty());
+        assert_eq!(Vec::<usize>::new(), Row([1, 3, 2, 1]).empty());
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct State([Row; 4]);
 
-impl State {
-    fn get(&self, i: usize, j: usize) -> u8 {
-        self.0[i].0[j]
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Move {
+    Left,
+    Right,
+    Up,
+    Down,
+}
 
-    fn transpose_in_place(&mut self) -> &mut Self {
-        for i in 0..3 {
-            for j in (i + 1)..4 {
-                let tmp = self.get(i, j);
-                self.0[i].0[j] = self.get(j, i);
-                self.0[j].0[i] = tmp;
-            }
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for row in self.0.iter() {
+            let row = row.0;
+            write!(
+                f,
+                "{:>2} {:>2} {:>2} {:>2}\n",
+                row[0], row[1], row[2], row[3]
+            )?;
         }
-        self
+        Ok(())
+    }
+}
+
+impl State {
+    const FOUR_SPAWN_PROB: f64 = 0.1;
+
+    // get by linear index
+    fn get(&self, i: usize) -> u8 {
+        self.0[i / 4].0[i % 4]
     }
 
-    fn transposed(&self) -> Self {
-        let mut new = *self;
-        new.transpose_in_place();
+    // set by linear index
+    fn set(&mut self, i: usize, x: u8) {
+        self.0[i / 4].0[i % 4] = x;
+    }
+
+    // rotate right
+    //
+    // internally used to implement up/down movement using only left/right
+    fn rotate_right(&self) -> Self {
+        let mut new = Self::default();
+        // right rotation indices, computed by hand
+        for (i, &idx) in [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3]
+            .iter()
+            .enumerate()
+        {
+            new.set(i, self.get(idx));
+        }
         new
     }
 
-    fn empty(&self) -> Vec<(u8, u8)> {
+    // rotate left
+    //
+    // internally used to implement up/down movement using only left/right
+    fn rotate_left(&self) -> Self {
+        let mut new = Self::default();
+        for (i, &idx) in [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3]
+            .iter()
+            .enumerate()
+        {
+            new.set(idx, self.get(i));
+        }
+        new
+    }
+
+    fn move_left(&self) -> Self {
+        let [r0, r1, r2, r3] = self.0;
+        Self([
+            r0.shift_left(),
+            r1.shift_left(),
+            r2.shift_left(),
+            r3.shift_left(),
+        ])
+    }
+
+    fn move_right(&self) -> Self {
+        let [r0, r1, r2, r3] = self.0;
+        Self([
+            r0.shift_right(),
+            r1.shift_right(),
+            r2.shift_right(),
+            r3.shift_right(),
+        ])
+    }
+
+    pub fn make_move(&self, m: Move) -> Self {
+        match m {
+            Move::Left => self.move_left(),
+            Move::Right => self.move_right(),
+            Move::Up => self.rotate_left().move_left().rotate_right(),
+            Move::Down => self.rotate_right().move_left().rotate_left(),
+        }
+    }
+
+    fn empty(&self) -> Vec<(usize, usize)> {
         let mut indices = Vec::new();
         self.0.iter().enumerate().for_each(|(i, &row)| {
-            let i = i as u8;
             indices.extend(row.empty().iter().map(|&j| (i, j)));
         });
         indices
+    }
+
+    fn add(&mut self, i: usize, j: usize, x: u8) -> &mut Self {
+        self.0[i].add(j, x);
+        self
+    }
+
+    fn rand_add<R: Rng>(&mut self, rng: &mut R) -> &mut Self {
+        // if nothing is empty this will fail (and we won't add anything)
+        if let Some(&(i, j)) = self.empty().choose(rng) {
+            let x = if rng.gen_bool(Self::FOUR_SPAWN_PROB) {
+                2 // numbers are encoded by their power of 2
+            } else {
+                1
+            };
+            self.add(i, j, x);
+        }
+        self
     }
 }
 
 #[cfg(test)]
 mod state_tests {
 
-    use super::{Row, State};
+    use super::{Move, Row, State};
 
     #[test]
-    fn transpose() {
+    fn rotate() {
+        let s = State([
+            Row([0, 1, 2, 3]),
+            Row([4, 0, 0, 0]),
+            Row([8, 0, 0, 0]),
+            Row([12, 0, 0, 0]),
+        ]);
         assert_eq!(
             State([
-                Row([0, 4, 8, 12]),
-                Row([1, 5, 9, 13]),
-                Row([2, 6, 10, 14]),
-                Row([3, 7, 11, 15]),
+                Row([12, 8, 4, 0]),
+                Row([0, 0, 0, 1]),
+                Row([0, 0, 0, 2]),
+                Row([0, 0, 0, 3]),
             ]),
-            State([
-                Row([0, 1, 2, 3]),
-                Row([4, 5, 6, 7]),
-                Row([8, 9, 10, 11]),
-                Row([12, 13, 14, 15]),
-            ])
-            .transposed()
+            s.rotate_right()
         );
+        assert_eq!(
+            State([
+                Row([3, 0, 0, 0]),
+                Row([2, 0, 0, 0]),
+                Row([1, 0, 0, 0]),
+                Row([0, 4, 8, 12]),
+            ]),
+            s.rotate_left()
+        )
     }
 
     #[test]
@@ -158,5 +264,51 @@ mod state_tests {
             ])
             .empty()
         )
+    }
+
+    #[test]
+    fn test_moves() {
+        let s = State([
+            Row([0, 0, 0, 0]),
+            Row([0, 1, 0, 0]),
+            Row([0, 0, 0, 0]),
+            Row([0, 0, 0, 0]),
+        ]);
+        assert_eq!(
+            State([
+                Row([0, 0, 0, 0]),
+                Row([1, 0, 0, 0]),
+                Row([0, 0, 0, 0]),
+                Row([0, 0, 0, 0]),
+            ]),
+            s.make_move(Move::Left),
+        );
+        assert_eq!(
+            State([
+                Row([0, 0, 0, 0]),
+                Row([0, 0, 0, 1]),
+                Row([0, 0, 0, 0]),
+                Row([0, 0, 0, 0]),
+            ]),
+            s.make_move(Move::Right),
+        );
+        assert_eq!(
+            State([
+                Row([0, 1, 0, 0]),
+                Row([0, 0, 0, 0]),
+                Row([0, 0, 0, 0]),
+                Row([0, 0, 0, 0]),
+            ]),
+            s.make_move(Move::Up),
+        );
+        assert_eq!(
+            State([
+                Row([0, 0, 0, 0]),
+                Row([0, 0, 0, 0]),
+                Row([0, 0, 0, 0]),
+                Row([0, 1, 0, 0]),
+            ]),
+            s.make_move(Move::Down),
+        );
     }
 }
