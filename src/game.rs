@@ -122,15 +122,16 @@ impl fmt::Display for State {
 }
 
 impl State {
-    const FOUR_SPAWN_PROB: f64 = 0.1;
+    pub const FOUR_SPAWN_PROB: f64 = 0.1;
+    pub const TWO_SPAWN_PROB: f64 = 1.0 - Self::FOUR_SPAWN_PROB;
 
     /// Get a tile by linear index (in 0..16).
     pub fn get(&self, i: usize) -> u8 {
         self.0[i / 4].0[i % 4]
     }
 
-    /// set by linear index
-    fn set(&mut self, i: usize, x: u8) {
+    /// Set a tile by linear index.
+    pub fn set(&mut self, i: usize, x: u8) {
         self.0[i / 4].0[i % 4] = x;
     }
 
