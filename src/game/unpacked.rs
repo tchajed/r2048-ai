@@ -38,6 +38,16 @@ impl Row {
     fn shift_right(&self) -> Self {
         self.reverse().shift_left().reverse()
     }
+
+    fn empty(&self) -> Vec<u8> {
+        let mut indices = Vec::new();
+        for i in 0..4 {
+            if self.0[i] == 0 {
+                indices.push(i as u8);
+            }
+        }
+        indices
+    }
 }
 
 #[cfg(test)]
@@ -68,6 +78,13 @@ mod row_tests {
         assert_eq!(Row([0, 0, 1, 2]), Row([0, 1, 1, 1]).shift_right());
         assert_eq!(Row([2, 3, 0, 0]), Row([1, 1, 2, 2]).shift_left());
     }
+
+    #[test]
+    fn empty() {
+        assert_eq!(vec![0, 1, 2, 3], Row([0, 0, 0, 0]).empty());
+        assert_eq!(vec![1, 2], Row([3, 0, 0, 2]).empty());
+        assert_eq!(Vec::<u8>::new(), Row([1, 3, 2, 1]).empty());
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -94,6 +111,15 @@ impl State {
         new.transpose_in_place();
         new
     }
+
+    fn empty(&self) -> Vec<(u8, u8)> {
+        let mut indices = Vec::new();
+        self.0.iter().enumerate().for_each(|(i, &row)| {
+            let i = i as u8;
+            indices.extend(row.empty().iter().map(|&j| (i, j)));
+        });
+        indices
+    }
 }
 
 #[cfg(test)]
@@ -102,7 +128,7 @@ mod state_tests {
     use super::{Row, State};
 
     #[test]
-    fn test_transpose() {
+    fn transpose() {
         assert_eq!(
             State([
                 Row([0, 4, 8, 12]),
@@ -118,5 +144,19 @@ mod state_tests {
             ])
             .transposed()
         );
+    }
+
+    #[test]
+    fn empty() {
+        assert_eq!(
+            vec![(0, 1), (0, 2), (1, 0), (3, 3)],
+            State([
+                Row([1, 0, 0, 2]),
+                Row([0, 2, 1, 3]),
+                Row([3, 4, 2, 5]),
+                Row([1, 2, 1, 0]),
+            ])
+            .empty()
+        )
     }
 }
