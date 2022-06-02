@@ -1,3 +1,5 @@
+#![feature(const_for)]
+
 #[macro_use]
 extern crate static_assertions;
 
