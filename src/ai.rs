@@ -11,29 +11,6 @@ pub fn rand_move<R: Rng>(s: &State, rng: &mut R) -> Option<(Move, State)> {
     moves.choose(rng).copied()
 }
 
-// compute the possible tile placements from a state, and their probabilities
-// (which will sum to 1)
-fn next_placements(s: &State) -> Vec<(f64, State)> {
-    let poss = s.empty();
-    let mut states = Vec::with_capacity(2 * poss.len());
-    let base_prob = 1.0 / (poss.len() as f64);
-    for &i in poss.iter() {
-        // states where we add a 2 (= 2^1)
-        let mut next_s = *s;
-        next_s.set(i as usize, 1);
-        let p = base_prob * State::TWO_SPAWN_PROB;
-        states.push((p, next_s));
-    }
-    for &i in poss.iter() {
-        // states where we add a 4 (= 2^2)
-        let mut next_s = *s;
-        next_s.set(i as usize, 2);
-        let p = base_prob * State::FOUR_SPAWN_PROB;
-        states.push((p, next_s));
-    }
-    states
-}
-
 mod weight {
     pub(super) type Matrix = [f64; 16];
 
@@ -86,39 +63,55 @@ fn state_weight_product(s: &State, w: weight::Matrix) -> f64 {
     (0..16).map(|i| s.get(i) as f64 * w[i]).sum()
 }
 
-fn terminal_score(s: &State) -> f64 {
+fn float_cmp(x: f64, y: f64) -> std::cmp::Ordering {
+    if x < y {
+        Ordering::Less
+    } else {
+        Ordering::Greater
+    }
+}
+
+fn weight_terminal_score(s: &State) -> f64 {
     weight::W_MATRICES
         .iter()
         .map(|&w_mat| state_weight_product(s, w_mat))
-        .max_by(|x, y| {
-            if x < y {
-                Ordering::Less
-            } else {
-                Ordering::Greater
-            }
-        })
+        .max_by(|&x, &y| float_cmp(x, y))
         .unwrap()
+}
+
+fn state_place(s: &State, i: u8, x: u8) -> State {
+    let mut next_s = *s;
+    next_s.set(i as usize, x);
+    next_s
 }
 
 fn expectimax_score(s: &State, search_depth: usize) -> f64 {
     if search_depth == 0 {
-        return terminal_score(s);
+        return weight_terminal_score(s);
     }
-    todo!();
+    // we want to the expected value of the expectimax score over all the random
+    // placements that could happen in this state
+    let mut weighted_sum: f64 = 0.0;
+    let poss = s.empty();
+    let total_weight = poss.len() as f64;
+    for i in poss.into_iter() {
+        for (p, x) in [(State::TWO_SPAWN_PROB, 1), (State::FOUR_SPAWN_PROB, 2)] {
+            weighted_sum += p * expectimax_best(&state_place(s, i, x), search_depth - 1)
+                .map(|(_, _, s)| s)
+                .unwrap_or_else(|| weight_terminal_score(s));
+        }
+    }
+    return weighted_sum / total_weight;
 }
 
-pub fn expectimax_move(s: &State, search_depth: usize) -> Option<(Move, State)> {
+fn expectimax_best(s: &State, search_depth: usize) -> Option<(Move, State, f64)> {
     let scored_moves = s
         .legal_moves()
         .into_iter()
         .map(|(m, s)| (m, s, expectimax_score(&s, search_depth)));
-    scored_moves
-        .max_by(|(_, _, score1), (_, _, score2)| {
-            if score1 < score2 {
-                Ordering::Less
-            } else {
-                Ordering::Greater
-            }
-        })
-        .map(|(m, s, _)| (m, s))
+    scored_moves.max_by(|&(_, _, score1), &(_, _, score2)| float_cmp(score1, score2))
+}
+
+pub fn expectimax_move(s: &State, search_depth: usize) -> Option<(Move, State)> {
+    expectimax_best(s, search_depth).map(|(m, s, _)| (m, s))
 }
