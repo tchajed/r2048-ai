@@ -130,10 +130,10 @@ mod row_tests {
     impl Arbitrary for Row {
         fn arbitrary(g: &mut Gen) -> Row {
             Row([
-                u8::arbitrary(g),
-                u8::arbitrary(g),
-                u8::arbitrary(g),
-                u8::arbitrary(g),
+                u8::arbitrary(g) / 2,
+                u8::arbitrary(g) / 2,
+                u8::arbitrary(g) / 2,
+                u8::arbitrary(g) / 2,
             ])
         }
     }
