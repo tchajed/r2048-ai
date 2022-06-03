@@ -14,27 +14,48 @@ struct Row([u8; 4]);
 
 impl Row {
     #[cfg(test)]
+    /// The logic that shift_left is supposed to implement.
     fn shift_left_spec(&self) -> Self {
+        // move the non-zero elements to the front
         let mut els: Vec<u8> = self
             .0
             .iter()
             .filter_map(|&x| if x > 0 { Some(x) } else { None })
             .collect();
+        // pad with zeros so els.len() == 4
+        while els.len() < 4 {
+            els.push(0);
+        }
+        // look at i and i+1 in a sliding window
         let mut i = 0;
-        while i + 1 < els.len() {
-            if els[i] == els[i + 1] {
+        while i + 1 < 4 {
+            // collapse adjacent equal elements
+            if els[i] != 0 && els[i] == els[i + 1] {
+                // increment i (adding two equal powers of two means incrementing the exponent)
                 els[i] += 1;
+                // remove the extra copy and add a 0 to the end
                 els.remove(i + 1);
-                // check again, in case another merge is needed
+                els.push(0);
+                // check again without incrementing i, in case another merge is
+                // needed at this position
                 continue;
             }
             i += 1;
         }
+        // turn els into an array
         let mut new_row = [0u8; 4];
-        new_row[..els.len()].clone_from_slice(&els);
+        new_row.clone_from_slice(&els);
         Row(new_row)
     }
 
+    /// Shift the row's elements to the left and collapse tiles together.
+    ///
+    /// This is extremely performance-critical and is thus written imperatively
+    /// with no allocations.
+    ///
+    /// Honestly, I don't understand this code - it was written by fiddling with
+    /// the logic and indices until the tests passed (which compare against the
+    /// spec above).
     fn shift_left(&self) -> Self {
         let mut els = self.0;
         // current index
@@ -46,7 +67,7 @@ impl Row {
         }
         // while we have non-zeros to process
         while j < 4 {
-            // take the next non-zero
+            // move the next non-zero to i
             let tmp = els[j];
             els[j] = 0;
             els[i] = tmp;
@@ -55,6 +76,7 @@ impl Row {
             if i > 0 && els[i] == els[i - 1] {
                 els[i - 1] += 1;
                 els[i] = 0;
+                // re-merge at same position
                 i -= 1;
             }
             while j < 4 && els[j] == 0 {
