@@ -1,4 +1,12 @@
 //! AI to automatically play 2048.
+//!
+//! Uses the expectimax algorithm with a depth limit. The high-level algorithm
+//! is nicely described in [these lecture notes by Anca Dragan and Sergey
+//! Levine](https://inst.eecs.berkeley.edu/~cs188/fa19/assets/slides/archive/SP18-CS188%20Lecture%207%20--%20Expectimax%20Search%20and%20Utilities.pdf),
+//! while the 2048-specific terminal state scoring is taken from [this blog
+//! post](https://codemyroad.wordpress.com/2014/05/14/2048-ai-the-intelligent-bot/),
+//! which did some sort of hyperparameter search to come up with a weight
+//! matrix.
 use std::cmp::Ordering;
 
 use crate::game::{Move, State};
@@ -14,6 +22,12 @@ pub fn rand_move<R: Rng>(s: &State, rng: &mut R) -> Option<(Move, State)> {
 mod weight {
     pub(super) type Matrix = [f64; 16];
 
+    // This magical weight matrix is taken from
+    // https://codemyroad.wordpress.com/2014/05/14/2048-ai-the-intelligent-bot/.
+    //
+    // It tries to encourage putting a big number in the top-left corner (then
+    // all rotations/transposes of this matrix are tried to explore the
+    // symmetries).
     const W0: Matrix = [
         0.135759, 0.121925, 0.102812, 0.099937, 0.0997992, 0.0888405, 0.076711, 0.0724143,
         0.060654, 0.0562579, 0.037116, 0.0161889, 0.0125498, 0.00992495, 0.00575871, 0.00335193,
@@ -35,6 +49,9 @@ mod weight {
     const RIGHT_ROTATE_IDX: [usize; 16] = [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3];
 
     const fn rot_r(w: Matrix) -> Matrix {
+        // TODO: would be nice to initialize this in a better way (using a macro
+        // probably), we have an initialization expression in terms of the
+        // index...
         let mut new_w = [0f64; 16];
         let mut i = 0;
         while i < 16 {
@@ -82,7 +99,7 @@ fn state_tiles(s: &State) -> weight::Matrix {
 
 /// Score a terminal state using a weight matrix that encourages tiles to be in
 /// one corner.
-pub fn weight_score(s: &State) -> f64 {
+pub(crate) fn weight_score(s: &State) -> f64 {
     let tiles: [f64; 16] = state_tiles(s);
     weight::W_MATRICES
         .iter()
@@ -92,7 +109,7 @@ pub fn weight_score(s: &State) -> f64 {
 }
 
 /// Score a state just using the total value of all tiles, without regard to placement.
-pub fn sum_tiles_score(s: &State) -> f64 {
+pub(crate) fn sum_tiles_score(s: &State) -> f64 {
     (0..16).map(|i| s.tile(i) as f64).sum()
 }
 
