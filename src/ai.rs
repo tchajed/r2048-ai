@@ -137,7 +137,6 @@ fn expectimax_score(s: &State, search_depth: u32, terminal_score: &impl Fn(&Stat
                 .unwrap_or_else(|| terminal_score(s));
         }
     }
-    #[allow(clippy::needless_return)]
     return weighted_sum / total_weight;
 }
 

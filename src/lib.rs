@@ -1,3 +1,4 @@
+#![allow(clippy::needless_return)]
 use std::{io, time::Instant};
 
 use ai::{expectimax_sum_move, expectimax_weight_move, rand_move, smart_depth};
@@ -122,7 +123,7 @@ impl Config {
             moves = mgr.moves(),
             moves_per_s = moves_per_s,
         );
-        self.won(&mgr)
+        return self.won(&mgr);
     }
 
     pub fn won<R: Rng>(&self, g: &Game<R>) -> bool {
