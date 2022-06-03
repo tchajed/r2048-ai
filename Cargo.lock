@@ -446,6 +446,7 @@ dependencies = [
  "criterion",
  "rand",
  "static_assertions",
+ "termcolor",
 ]
 
 [[package]]

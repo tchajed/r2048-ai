@@ -1,8 +1,10 @@
-use std::time::Instant;
+use std::{io, time::Instant};
 
 use ai::{expectimax_sum_move, expectimax_weight_move, rand_move, smart_depth};
 use game::{Move, State};
 use rand::{prelude::ThreadRng, Rng};
+use std::io::Write;
+use termcolor::{ColorChoice, StandardStream};
 
 use crate::game::Game;
 
@@ -11,6 +13,25 @@ extern crate static_assertions;
 
 pub mod ai;
 pub mod game;
+
+fn write_state(s: &State, stream: &mut StandardStream) -> io::Result<()> {
+    for i in 0..4 {
+        for j in 0..4 {
+            let tile = s.tile(i * 4 + j);
+            if tile == 1 {
+                write!(stream, "     ")?;
+            } else {
+                write!(stream, "{:>4} ", tile)?;
+            }
+        }
+        writeln!(stream)?;
+    }
+    Ok(())
+}
+
+fn print_state(s: &State) {
+    write_state(s, &mut StandardStream::stdout(ColorChoice::AlwaysAnsi)).unwrap();
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Depth {
@@ -50,6 +71,7 @@ impl Config {
     /// Run runs the game and returns a score and whether or not this is a win.
     pub fn run(&self) -> bool {
         let mut mgr = Game::new();
+        print_state(mgr.state());
         print!("{}", mgr.state());
         let start = Instant::now();
         while let Some((m, s)) = self.next_move(mgr.state()) {
@@ -63,7 +85,7 @@ impl Config {
             } else {
                 println!("  {:>4} {:?}", mgr.moves(), m);
             }
-            print!("{}", mgr.state());
+            print_state(mgr.state());
             if let Some(target) = self.target_score {
                 if mgr.state().highest_tile() == target {
                     break;
