@@ -1,3 +1,11 @@
+//! Representation of single rows and implementation of the core shifting
+//! functionality.
+//!
+//! This module [`ArrayRow`] type uses an array of `u8`'s, which represent the
+//! log2 of each tile. It is only used to bootstrap [`CachedRow`], which is
+//! further compacted to a single u16 with four bits per cell (note that this
+//! limits us to tiles worth 2^15 = 32,768) and then the left and right shift
+//! operations are fully pre-computed for all 2^16 possible rows.
 use std::fmt;
 
 pub trait Row: Copy + Clone + PartialEq + Eq + Default {

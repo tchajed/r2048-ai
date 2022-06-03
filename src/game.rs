@@ -1,8 +1,7 @@
 //! Represent 2048 game states and transitions.
 //!
-//! Unpacked representation, to be used as specification for more efficient
-//! packed representation (where a state is a single u64 and each cell is 4
-//! bits).
+//! The representation of rows is the most performance-critical part and is
+//! delegated to the (private) row crate.
 
 mod row;
 
