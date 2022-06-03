@@ -57,10 +57,11 @@ mod weight {
         }
         new_w
     }
-}
 
-fn state_weight_product(s: &State, w: weight::Matrix) -> f64 {
-    (0..16).map(|i| s.tile(i) as f64 * w[i]).sum()
+    pub(super) fn dot(w1: Matrix, w2: Matrix) -> f64 {
+        // NOTE: this is actually much more confusing than the imperative version
+        w1.iter().zip(w2.iter()).map(|(x1, x2)| x1 * x2).sum()
+    }
 }
 
 fn float_cmp(x: f64, y: f64) -> std::cmp::Ordering {
@@ -71,20 +72,28 @@ fn float_cmp(x: f64, y: f64) -> std::cmp::Ordering {
     }
 }
 
+fn state_tiles(s: &State) -> weight::Matrix {
+    let mut tiles = [0f64; 16];
+    for i in 0..16 {
+        tiles[i] = s.tile(i) as f64;
+    }
+    tiles
+}
+
 /// Score a terminal state using a weight matrix that encourages tiles to be in
 /// one corner.
 pub fn weight_score(s: &State) -> f64 {
+    let tiles: [f64; 16] = state_tiles(s);
     weight::W_MATRICES
         .iter()
-        .map(|&w_mat| state_weight_product(s, w_mat))
+        .map(|&w_mat| weight::dot(tiles, w_mat))
         .max_by(|&x, &y| float_cmp(x, y))
         .unwrap()
 }
 
 /// Score a state just using the total value of all tiles, without regard to placement.
 pub fn sum_tiles_score(s: &State) -> f64 {
-    // weight everything equally
-    state_weight_product(s, [1f64; 16])
+    (0..16).map(|i| s.tile(i) as f64).sum()
 }
 
 fn expectimax_score<ScoreF>(s: &State, search_depth: u32, terminal_score: ScoreF) -> f64
