@@ -9,12 +9,13 @@
 //! matrix.
 use std::cmp::Ordering;
 
-use crate::game::{self, Move, Row, State};
+use crate::game;
+use crate::game::{Move, State};
 use rand::seq::SliceRandom;
 use rand::Rng;
 
 /// Generate a random legal move from `s`, and return the next state.
-pub fn rand_move<R: Row, Rn: Rng>(s: &State<R>, rng: &mut Rn) -> Option<(Move, State<R>)> {
+pub fn rand_move<Rn: Rng>(s: &State, rng: &mut Rn) -> Option<(Move, State)> {
     let moves = s.legal_moves();
     moves.choose(rng).copied()
 }
@@ -89,7 +90,7 @@ fn float_cmp(x: f64, y: f64) -> std::cmp::Ordering {
     }
 }
 
-fn state_tiles<R: Row>(s: &State<R>) -> weight::Matrix {
+fn state_tiles(s: &State) -> weight::Matrix {
     let mut tiles = [0f64; 16];
     for (i, tile) in tiles.iter_mut().enumerate() {
         *tile = s.tile(i) as f64;
@@ -99,7 +100,7 @@ fn state_tiles<R: Row>(s: &State<R>) -> weight::Matrix {
 
 /// Score a terminal state using a weight matrix that encourages tiles to be in
 /// one corner.
-pub fn weight_score<R: Row>(s: &State<R>) -> f64 {
+pub fn weight_score(s: &State) -> f64 {
     let tiles: [f64; 16] = state_tiles(s);
     weight::W_MATRICES
         .iter()
@@ -109,20 +110,16 @@ pub fn weight_score<R: Row>(s: &State<R>) -> f64 {
 }
 
 /// Score a state just using the total value of all tiles, without regard to placement.
-pub fn sum_tiles_score<R: Row>(s: &State<R>) -> f64 {
+pub fn sum_tiles_score(s: &State) -> f64 {
     (0..16).map(|i| s.tile(i) as f64).sum()
 }
 
-fn expectimax_score<R: Row>(
-    s: &State<R>,
-    search_depth: u32,
-    terminal_score: &impl Fn(&State<R>) -> f64,
-) -> f64 {
+fn expectimax_score(s: &State, search_depth: u32, terminal_score: &impl Fn(&State) -> f64) -> f64 {
     if search_depth == 0 {
         return terminal_score(s);
     }
 
-    fn state_place<R: Row>(s: &State<R>, i: u8, x: u8) -> State<R> {
+    fn state_place(s: &State, i: u8, x: u8) -> State {
         let mut next_s = *s;
         next_s.add(i as usize, x);
         next_s
@@ -144,11 +141,11 @@ fn expectimax_score<R: Row>(
     return weighted_sum / total_weight;
 }
 
-fn expectimax_best<R: Row>(
-    s: &State<R>,
+fn expectimax_best(
+    s: &State,
     search_depth: u32,
-    terminal_score: &impl Fn(&State<R>) -> f64,
-) -> Option<(Move, State<R>, f64)> {
+    terminal_score: &impl Fn(&State) -> f64,
+) -> Option<(Move, State, f64)> {
     let scored_moves = s
         .legal_moves()
         .into_iter()
@@ -156,24 +153,24 @@ fn expectimax_best<R: Row>(
     scored_moves.max_by(|&(_, _, score1), &(_, _, score2)| float_cmp(score1, score2))
 }
 
-fn expectimax_move<R: Row>(
-    s: &State<R>,
+fn expectimax_move(
+    s: &State,
     search_depth: u32,
-    terminal_score: &impl Fn(&State<R>) -> f64,
-) -> Option<(Move, State<R>)> {
+    terminal_score: &impl Fn(&State) -> f64,
+) -> Option<(Move, State)> {
     expectimax_best(s, search_depth, terminal_score).map(|(m, s, _)| (m, s))
 }
 
-pub fn smart_depth<R: Row>(s: &State<R>) -> u32 {
+pub fn smart_depth(s: &State) -> u32 {
     #[allow(clippy::let_and_return)]
     let depth = if s.empty().len() < 5 { 3 } else { 2 };
     depth
 }
 
-pub fn expectimax_weight_move<R: Row>(s: &State<R>, search_depth: u32) -> Option<(Move, State<R>)> {
+pub fn expectimax_weight_move(s: &State, search_depth: u32) -> Option<(Move, State)> {
     expectimax_move(s, search_depth, &weight_score)
 }
 
-pub fn expectimax_sum_move<R: Row>(s: &State<R>, search_depth: u32) -> Option<(Move, State<R>)> {
+pub fn expectimax_sum_move(s: &State, search_depth: u32) -> Option<(Move, State)> {
     expectimax_move(s, search_depth, &sum_tiles_score)
 }

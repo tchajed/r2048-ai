@@ -22,7 +22,7 @@ pub trait Row: Copy + Clone + PartialEq + Eq + Default {
 /// ArrowRow implements rows with a fixed-size array of bytes and a fairly
 /// efficient shift algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct ArrayRow([u8; 4]);
+struct ArrayRow([u8; 4]);
 
 impl fmt::Display for ArrayRow {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -94,6 +94,7 @@ impl Row for ArrayRow {
         indices
     }
 
+    #[inline]
     fn get(&self, i: usize) -> u8 {
         self.0[i]
     }
@@ -260,6 +261,11 @@ impl CachedRow {
             | (((r[0] & 0xf) as u16) << 0);
         Self { num }
     }
+
+    #[cfg(test)]
+    pub fn from_arr(xs: [u8; 4]) -> Self {
+        Self::from_array(ArrayRow::from_arr(xs))
+    }
 }
 
 impl fmt::Display for CachedRow {
@@ -336,7 +342,15 @@ impl Row for CachedRow {
 #[cfg(test)]
 mod cached_tests {
     use super::{ArrayRow, CachedRow, Row};
-    use quickcheck::quickcheck;
+    use quickcheck::{quickcheck, Arbitrary, Gen};
+
+    impl Arbitrary for CachedRow {
+        fn arbitrary(g: &mut Gen) -> Self {
+            CachedRow {
+                num: u16::arbitrary(g),
+            }
+        }
+    }
 
     #[test]
     fn prop_to_from_cached() {

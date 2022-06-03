@@ -12,13 +12,12 @@ use rand::prelude::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 
-pub use row::{ArrayRow, CachedRow, Row};
+pub use row::{CachedRow, Row};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct State<R: Row>([R; 4]);
+pub struct State([CachedRow; 4]);
 
-assert_eq_size!([u8; 16], State<ArrayRow>);
-assert_eq_size!([u8; 8], State<CachedRow>);
+assert_eq_size!(u64, State);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Move {
@@ -32,7 +31,7 @@ impl Move {
     pub const ALL: [Move; 4] = [Move::Left, Move::Right, Move::Up, Move::Down];
 }
 
-impl<R: Row + fmt::Display> fmt::Display for State<R> {
+impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for row in self.0.iter() {
             writeln!(f, "{row}")?;
@@ -44,19 +43,19 @@ impl<R: Row + fmt::Display> fmt::Display for State<R> {
 pub const FOUR_SPAWN_PROB: f64 = 0.1;
 pub const TWO_SPAWN_PROB: f64 = 1.0 - FOUR_SPAWN_PROB;
 
-impl State<ArrayRow> {
+impl State {
     #[cfg(test)]
     fn new(els: [[u8; 4]; 4]) -> Self {
         State([
-            ArrayRow::from_arr(els[0]),
-            ArrayRow::from_arr(els[1]),
-            ArrayRow::from_arr(els[2]),
-            ArrayRow::from_arr(els[3]),
+            CachedRow::from_arr(els[0]),
+            CachedRow::from_arr(els[1]),
+            CachedRow::from_arr(els[2]),
+            CachedRow::from_arr(els[3]),
         ])
     }
 }
 
-impl<R: Row> State<R> {
+impl State {
     /// Get a cell by linear index (in 0..16).
     fn get(&self, i: usize) -> u8 {
         self.0[i / 4].get(i % 4)
@@ -184,16 +183,16 @@ impl<R: Row> State<R> {
 #[cfg(test)]
 mod tests {
 
-    use super::{ArrayRow, Move, State};
+    use super::{CachedRow, Move, State};
     use quickcheck::{quickcheck, Arbitrary, Gen};
 
-    impl Arbitrary for State<ArrayRow> {
+    impl Arbitrary for State {
         fn arbitrary(g: &mut Gen) -> Self {
             dbg!(State([
-                ArrayRow::arbitrary(g),
-                ArrayRow::arbitrary(g),
-                ArrayRow::arbitrary(g),
-                ArrayRow::arbitrary(g),
+                CachedRow::arbitrary(g),
+                CachedRow::arbitrary(g),
+                CachedRow::arbitrary(g),
+                CachedRow::arbitrary(g),
             ]))
         }
     }
@@ -215,10 +214,10 @@ mod tests {
     #[test]
     #[ignore]
     fn prop_rotate_left3_is_right() {
-        fn prop(s: State<ArrayRow>) -> bool {
+        fn prop(s: State) -> bool {
             s.rotate_left().rotate_left().rotate_left() == s
         }
-        quickcheck(prop as fn(State<ArrayRow>) -> bool);
+        quickcheck(prop as fn(State) -> bool);
     }
 
     fn index(i: usize, j: usize) -> u8 {
@@ -271,19 +270,19 @@ mod tests {
     }
 }
 
-pub struct Game<R: Row, Rn: Rng> {
+pub struct Game<Rn: Rng> {
     rng: Rn,
-    s: State<R>,
+    s: State,
     moves: u32,
 }
 
-impl<R: Row> Game<R, ThreadRng> {
+impl Game<ThreadRng> {
     pub fn new() -> Self {
         Self::from_rng(ThreadRng::default())
     }
 }
 
-impl<R: Row, Rn: Rng> Game<R, Rn> {
+impl<Rn: Rng> Game<Rn> {
     pub fn from_rng(rng: Rn) -> Self {
         let mut rng = rng;
         let mut s = State::default();
@@ -293,11 +292,11 @@ impl<R: Row, Rn: Rng> Game<R, Rn> {
         Self { rng, s, moves: 0 }
     }
 
-    pub fn state(&self) -> &State<R> {
+    pub fn state(&self) -> &State {
         &self.s
     }
 
-    pub fn next_state(&mut self, s: State<R>) {
+    pub fn next_state(&mut self, s: State) {
         self.s = s;
         self.s.rand_add(&mut self.rng);
         self.moves += 1;
