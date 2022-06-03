@@ -12,7 +12,7 @@ use rand::prelude::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 
-use row::Row;
+use row::{GenRow, Row};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct State([Row; 4]);
@@ -145,7 +145,7 @@ impl State {
             .collect()
     }
 
-    // returns linear indices of empty positions
+    /// Returns the linear indices of empty positions.
     pub fn empty(&self) -> Vec<u8> {
         let mut indices = Vec::new();
         self.0.iter().enumerate().for_each(|(i, &row)| {
