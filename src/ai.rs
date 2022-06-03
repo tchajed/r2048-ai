@@ -91,8 +91,8 @@ fn float_cmp(x: f64, y: f64) -> std::cmp::Ordering {
 
 fn state_tiles(s: &State) -> weight::Matrix {
     let mut tiles = [0f64; 16];
-    for i in 0..16 {
-        tiles[i] = s.tile(i) as f64;
+    for (i, tile) in tiles.iter_mut().enumerate() {
+        *tile = s.tile(i) as f64;
     }
     tiles
 }
@@ -140,6 +140,7 @@ where
                 .unwrap_or_else(|| terminal_score(s));
         }
     }
+    #[allow(clippy::needless_return)]
     return weighted_sum / total_weight;
 }
 
@@ -170,6 +171,7 @@ where
 }
 
 pub fn smart_depth(s: &State) -> u32 {
+    #[allow(clippy::let_and_return)]
     let depth = if s.empty().len() < 5 { 3 } else { 2 };
     depth
 }

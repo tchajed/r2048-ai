@@ -122,14 +122,13 @@ impl Config {
             moves = mgr.moves(),
             moves_per_s = moves_per_s,
         );
-        return self.won(&mgr);
+        self.won(&mgr)
     }
 
     pub fn won<R: Rng>(&self, g: &Game<R>) -> bool {
-        if let Some(target) = self.target_score {
-            g.state().highest_tile() >= target
-        } else {
-            true
+        match self.target_score {
+            Some(target) => g.state().highest_tile() >= target,
+            None => true,
         }
     }
 }
