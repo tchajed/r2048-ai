@@ -73,15 +73,22 @@ mod row_tests {
     }
 
     #[test]
-    fn collapse() {
-        assert_eq!(Row([2, 0, 0, 0]), Row([0, 1, 0, 1]).shift_left());
-        assert_eq!(Row([4, 6, 0, 0]), Row([4, 5, 0, 5]).shift_left());
-        assert_eq!(Row([2, 2, 0, 0]), Row([1, 1, 1, 1]).shift_left());
-        // this one is subtle
-        assert_eq!(Row([2, 1, 0, 0]), Row([1, 1, 1, 0]).shift_left());
-        assert_eq!(Row([0, 0, 1, 2]), Row([0, 1, 1, 1]).shift_right());
-        assert_eq!(Row([3, 2, 0, 0]), Row([1, 1, 2, 2]).shift_left());
-        assert_eq!(Row([4, 5, 0, 0]), Row([2, 2, 3, 5]).shift_left());
+    fn shifts() {
+        for (shifted, r) in vec![
+            (Row([2, 0, 0, 0]), Row([0, 1, 0, 1])),
+            (Row([4, 6, 0, 0]), Row([4, 5, 0, 5])),
+            (Row([2, 2, 0, 0]), Row([1, 1, 1, 1])),
+            // this one is subtle
+            (Row([2, 1, 0, 0]), Row([1, 1, 1, 0])),
+            (Row([2, 1, 0, 0]), Row([0, 1, 1, 1])),
+            (Row([3, 2, 0, 0]), Row([1, 1, 2, 2])),
+            (Row([4, 5, 0, 0]), Row([2, 2, 3, 5])),
+        ]
+        .into_iter()
+        {
+            assert_eq!(shifted, r.shift_left());
+            assert_eq!(r.reverse().shift_right().reverse(), r.shift_left());
+        }
     }
 
     #[test]
