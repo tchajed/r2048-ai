@@ -9,7 +9,7 @@
 //! matrix.
 use std::cmp::Ordering;
 
-use crate::game::{Move, State};
+use crate::game::{self, Move, State};
 use rand::seq::SliceRandom;
 use rand::Rng;
 
@@ -133,7 +133,7 @@ where
     let poss = s.empty();
     let total_weight = poss.len() as f64;
     for i in poss.into_iter() {
-        for (p, x) in [(State::TWO_SPAWN_PROB, 1), (State::FOUR_SPAWN_PROB, 2)] {
+        for (p, x) in [(game::TWO_SPAWN_PROB, 1), (game::FOUR_SPAWN_PROB, 2)] {
             let next_s = state_place(s, i, x);
             weighted_sum += p * expectimax_best(&next_s, search_depth - 1, terminal_score)
                 .map(|(_, _, s)| s)

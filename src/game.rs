@@ -231,10 +231,10 @@ impl fmt::Display for State {
     }
 }
 
-impl State {
-    pub const FOUR_SPAWN_PROB: f64 = 0.1;
-    pub const TWO_SPAWN_PROB: f64 = 1.0 - Self::FOUR_SPAWN_PROB;
+pub const FOUR_SPAWN_PROB: f64 = 0.1;
+pub const TWO_SPAWN_PROB: f64 = 1.0 - FOUR_SPAWN_PROB;
 
+impl State {
     /// Get a cell by linear index (in 0..16).
     fn get(&self, i: usize) -> u8 {
         self.0[i / 4].get(i % 4)
@@ -337,10 +337,10 @@ impl State {
     /// Add a random tile to the board.
     pub fn rand_add<R: Rng>(&mut self, rng: &mut R) -> &mut Self {
         if let Some(&i) = self.empty().choose(rng) {
-            let x = if rng.gen_bool(Self::FOUR_SPAWN_PROB) {
-                2 // numbers are encoded by their power of 2
+            let x = if rng.gen_bool(TWO_SPAWN_PROB) {
+                1 // numbers are encoded by their power of 2
             } else {
-                1
+                2
             };
             self.set(i as usize, x);
         } else {
