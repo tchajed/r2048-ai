@@ -1,10 +1,12 @@
 use std::time::Instant;
 
-use r2048_ai::ai::{expectimax_weight_move, smart_depth};
-use r2048_ai::StateManager;
+use r2048_ai::{
+    ai::{expectimax_weight_move, smart_depth},
+    game::Game,
+};
 
 fn main() {
-    let mut mgr = StateManager::new();
+    let mut mgr = Game::new();
     print!("{}", mgr.state());
     let start = Instant::now();
     while let Some((m, s)) = expectimax_weight_move(mgr.state(), smart_depth(mgr.state())) {

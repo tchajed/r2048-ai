@@ -4,12 +4,11 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use r2048_ai::ai::{
     expectimax_sum_move, expectimax_weight_move, rand_move, sum_tiles_score, weight_score,
 };
-use r2048_ai::game::State;
-use r2048_ai::StateManager;
+use r2048_ai::game::{Game, State};
 use rand::{prelude::StdRng, SeedableRng};
 
 fn random_game() -> u32 {
-    let mut mgr = StateManager::from_rng(StdRng::seed_from_u64(0));
+    let mut mgr = Game::from_rng(StdRng::seed_from_u64(0));
     let mut move_rng = StdRng::seed_from_u64(2);
     // run for exactly 100 iterations so timing is easy to interpret
     for _ in 0..100 {

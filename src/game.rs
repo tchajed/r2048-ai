@@ -6,6 +6,7 @@
 
 use std::fmt;
 
+use rand::prelude::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 
@@ -447,5 +448,43 @@ mod state_tests {
                 ])
             )
         )
+    }
+}
+
+pub struct Game<R: Rng> {
+    rng: R,
+    s: State,
+    moves: u32,
+}
+
+impl Game<ThreadRng> {
+    pub fn new() -> Self {
+        Self::from_rng(ThreadRng::default())
+    }
+}
+
+impl<R: Rng> Game<R> {
+    pub fn from_rng(rng: R) -> Self {
+        let mut rng = rng;
+        let mut s = State::default();
+        // game starts with two tiles
+        s.rand_add(&mut rng);
+        s.rand_add(&mut rng);
+        Self { rng, s, moves: 0 }
+    }
+
+    pub fn state(&self) -> &State {
+        &self.s
+    }
+
+    pub fn next_state(&mut self, s: State) {
+        self.s = s;
+        self.s.rand_add(&mut self.rng);
+        self.moves += 1;
+    }
+
+    /// Get the number of moves made so far.
+    pub fn moves(&self) -> u32 {
+        self.moves
     }
 }
