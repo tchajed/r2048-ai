@@ -13,7 +13,8 @@ use rand::Rng;
 struct Row([u8; 4]);
 
 impl Row {
-    fn shift_left(&self) -> Self {
+    #[cfg(test)]
+    fn shift_left_spec(&self) -> Self {
         let mut els: Vec<u8> = self
             .0
             .iter()
@@ -32,6 +33,36 @@ impl Row {
         let mut new_row = [0u8; 4];
         new_row[..els.len()].clone_from_slice(&els);
         Row(new_row)
+    }
+
+    fn shift_left(&self) -> Self {
+        let mut els = self.0;
+        // current index
+        let mut i = 0;
+        // next non-zero
+        let mut j = 0;
+        while j < 4 && els[j] == 0 {
+            j += 1;
+        }
+        // while we have non-zeros to process
+        while j < 4 {
+            // take the next non-zero
+            let tmp = els[j];
+            els[j] = 0;
+            els[i] = tmp;
+            j += 1;
+            // if there's a previous element, try to collapse with it
+            if i > 0 && els[i] == els[i - 1] {
+                els[i - 1] += 1;
+                els[i] = 0;
+                i -= 1;
+            }
+            while j < 4 && els[j] == 0 {
+                j += 1;
+            }
+            i += 1;
+        }
+        Row(els)
     }
 
     #[inline]
@@ -76,24 +107,40 @@ mod row_tests {
     #[test]
     fn shifts() {
         for (shifted, r) in vec![
+            // simple, no-collapse tests
+            (Row([1, 2, 3, 0]), Row([0, 1, 2, 3])),
+            (Row([1, 0, 0, 0]), Row([0, 0, 0, 1])),
+            (Row([5, 3, 0, 0]), Row([0, 5, 0, 3])),
+            // collapsing
             (Row([2, 0, 0, 0]), Row([0, 1, 0, 1])),
             (Row([4, 6, 0, 0]), Row([4, 5, 0, 5])),
             (Row([2, 2, 0, 0]), Row([1, 1, 1, 1])),
-            // this one is subtle
             (Row([2, 1, 0, 0]), Row([1, 1, 1, 0])),
             (Row([2, 1, 0, 0]), Row([0, 1, 1, 1])),
             (Row([3, 2, 0, 0]), Row([1, 1, 2, 2])),
             (Row([4, 5, 0, 0]), Row([2, 2, 3, 5])),
+            (Row([3, 5, 0, 0]), Row([2, 2, 4, 4])),
+            // bunch of unchanged examples
+            (Row([0, 0, 0, 0]), Row([0, 0, 0, 0])),
+            (Row([1, 0, 0, 0]), Row([1, 0, 0, 0])),
+            (Row([2, 3, 2, 0]), Row([2, 3, 2, 0])),
+            (Row([3, 4, 5, 3]), Row([3, 4, 5, 3])),
         ]
         .into_iter()
         {
-            assert_eq!(shifted, r.shift_left());
+            assert_eq!(shifted, r.shift_left(), "{:?} left shift is wrong", r);
             assert_eq!(
                 r.reverse().shift_left().reverse(),
                 r.shift_right(),
                 "{:?} shifted wrong",
                 r
             );
+            assert_eq!(
+                r.shift_left_spec(),
+                r.shift_left(),
+                "{:?} left shift doesn't match spec",
+                r
+            )
         }
     }
 

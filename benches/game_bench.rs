@@ -44,7 +44,7 @@ fn small_criterion_benchmarks(c: &mut Criterion) {
     c.bench_function("random game", |b| b.iter(|| random_game()));
 
     let s = test_state();
-    c.bench_function("sum tiles", |b| b.iter(|| sum_tiles_score(&black_box(s))));
+    c.bench_function("sum score", |b| b.iter(|| sum_tiles_score(&black_box(s))));
     c.bench_function("weight score", |b| b.iter(|| weight_score(&black_box(s))));
 }
 
