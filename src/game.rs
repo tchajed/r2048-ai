@@ -112,7 +112,11 @@ impl Row {
         self.0[i]
     }
 
-    fn set(&mut self, i: usize, x: u8) {
+    /// Add a tile
+    ///
+    /// Should only be used to add tiles to empty cells.
+    fn add(&mut self, i: usize, x: u8) {
+        assert_eq!(0, self.0[i]);
         self.0[i] = x;
     }
 }
@@ -248,9 +252,11 @@ impl State {
         2u32.pow(self.get(i).into())
     }
 
-    /// Set a tile by linear index.
-    pub fn set(&mut self, i: usize, x: u8) {
-        self.0[i / 4].set(i % 4, x);
+    /// Add a tile by linear index.
+    ///
+    /// Should only be used when the tile is empty.
+    pub fn add(&mut self, i: usize, x: u8) {
+        self.0[i / 4].add(i % 4, x);
     }
 
     const RIGHT_ROTATE_IDX: [usize; 16] = [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3];
@@ -262,7 +268,7 @@ impl State {
         let mut new = Self::default();
         // right rotation indices, computed by hand
         for (i, &idx) in Self::RIGHT_ROTATE_IDX.iter().enumerate() {
-            new.set(i, self.get(idx));
+            new.add(i, self.get(idx));
         }
         new
     }
@@ -273,7 +279,7 @@ impl State {
     fn rotate_left(&self) -> Self {
         let mut new = Self::default();
         for (i, &idx) in Self::RIGHT_ROTATE_IDX.iter().enumerate() {
-            new.set(idx, self.get(i));
+            new.add(idx, self.get(i));
         }
         new
     }
@@ -342,7 +348,7 @@ impl State {
             } else {
                 2
             };
-            self.set(i as usize, x);
+            self.add(i as usize, x);
         } else {
             // no move should leave the board this full
             panic!("attempt to add to a full board");

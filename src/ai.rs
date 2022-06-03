@@ -123,7 +123,7 @@ where
 
     fn state_place(s: &State, i: u8, x: u8) -> State {
         let mut next_s = *s;
-        next_s.set(i as usize, x);
+        next_s.add(i as usize, x);
         next_s
     }
 

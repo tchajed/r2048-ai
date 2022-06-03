@@ -25,7 +25,7 @@ fn test_state() -> State {
     let mut s = State::default();
     let values: Vec<u8> = vec![0, 0, 1, 1, 0, 1, 2, 3, 0, 1, 2, 3, 3, 6, 9, 10];
     for (i, x) in values.into_iter().enumerate() {
-        s.set(i, x);
+        s.add(i, x);
     }
     s
 }
@@ -34,7 +34,7 @@ fn sparse_state() -> State {
     let mut s = State::default();
     let values: Vec<u8> = vec![0, 1, 3, 8, 0, 0, 4, 2, 0, 1, 0, 0, 0, 0, 0, 0];
     for (i, x) in values.into_iter().enumerate() {
-        s.set(i, x);
+        s.add(i, x);
     }
     s
 }
