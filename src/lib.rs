@@ -93,7 +93,6 @@ impl Config {
     pub fn run(&self) -> bool {
         let mut mgr = Game::new();
         print_state(mgr.state());
-        print!("{}", mgr.state());
         let start = Instant::now();
         // current estimate
         let mut moves_per_s = 0.0;
@@ -102,7 +101,8 @@ impl Config {
 
             _ = clearscreen::clear();
             let moves = mgr.moves();
-            if moves % 50 == 0 {
+            // generate an estimate early on, and then periodically
+            if moves == 10 || moves % 50 == 0 {
                 let elapsed_s = start.elapsed().as_secs_f64();
                 moves_per_s = moves as f64 / elapsed_s;
             }
