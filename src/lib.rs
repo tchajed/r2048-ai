@@ -4,7 +4,7 @@ use ai::{expectimax_sum_move, expectimax_weight_move, rand_move, smart_depth};
 use game::{Move, State};
 use rand::{prelude::ThreadRng, Rng};
 use std::io::Write;
-use termcolor::{ColorChoice, StandardStream};
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 use crate::game::Game;
 
@@ -14,23 +14,46 @@ extern crate static_assertions;
 pub mod ai;
 pub mod game;
 
+fn gray_write<S: AsRef<str>>(stream: &mut StandardStream, s: S) -> io::Result<()> {
+    stream.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(200, 200, 200))))?;
+    write!(stream, "{}", s.as_ref())?;
+    stream.reset()?;
+    Ok(())
+}
+
+// convenience that cleans up the code
+fn gray_writeln<S: AsRef<str>>(stream: &mut StandardStream, s: S) -> io::Result<()> {
+    gray_write(stream, s)?;
+    writeln!(stream)?;
+    Ok(())
+}
+
 fn write_state(s: &State, stream: &mut StandardStream) -> io::Result<()> {
+    let sep = format!("+{bar}+{bar}+{bar}+{bar}+", bar = "-----");
+    gray_writeln(stream, &sep)?;
     for i in 0..4 {
+        gray_write(stream, "|")?;
         for j in 0..4 {
             let tile = s.tile(i * 4 + j);
             if tile == 1 {
+                // background gray for empty spaces
+                // stream.set_color(ColorSpec::new().set_bg(Some(Color::Rgb(200, 200, 200))))?;
                 write!(stream, "     ")?;
+                stream.reset()?;
             } else {
                 write!(stream, "{:>4} ", tile)?;
             }
+            gray_write(stream, "|")?;
         }
         writeln!(stream)?;
+        gray_writeln(stream, &sep)?;
     }
     Ok(())
 }
 
 fn print_state(s: &State) {
-    write_state(s, &mut StandardStream::stdout(ColorChoice::AlwaysAnsi)).unwrap();
+    write_state(s, &mut StandardStream::stdout(ColorChoice::AlwaysAnsi))
+        .expect("could not print colored state");
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -74,17 +97,18 @@ impl Config {
         print_state(mgr.state());
         print!("{}", mgr.state());
         let start = Instant::now();
-        while let Some((m, s)) = self.next_move(mgr.state()) {
+        // current estimate
+        let mut moves_per_s = 0.0;
+        while let Some((_, s)) = self.next_move(mgr.state()) {
             mgr.next_state(s);
 
+            _ = clearscreen::clear();
             let moves = mgr.moves();
-            if moves % 25 == 0 {
+            if moves % 50 == 0 {
                 let elapsed_s = start.elapsed().as_secs_f64();
-                let moves_per_s = moves as f64 / elapsed_s;
-                println!("  {:>4} {:?} {:0.0} moves/s", moves, m, moves_per_s);
-            } else {
-                println!("  {:>4} {:?}", mgr.moves(), m);
+                moves_per_s = moves as f64 / elapsed_s;
             }
+            println!("  {:>4} {:0.0} moves/s", moves, moves_per_s);
             print_state(mgr.state());
             if let Some(target) = self.target_score {
                 if mgr.state().highest_tile() == target {
