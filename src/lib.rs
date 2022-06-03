@@ -15,7 +15,7 @@ pub mod ai;
 pub mod game;
 
 fn gray_write<S: AsRef<str>>(stream: &mut StandardStream, s: S) -> io::Result<()> {
-    stream.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(200, 200, 200))))?;
+    _ = stream.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(200, 200, 200))));
     write!(stream, "{}", s.as_ref())?;
     stream.reset()?;
     Ok(())
@@ -36,8 +36,6 @@ fn write_state(s: &State, stream: &mut StandardStream) -> io::Result<()> {
         for j in 0..4 {
             let tile = s.tile(i * 4 + j);
             if tile == 1 {
-                // background gray for empty spaces
-                // stream.set_color(ColorSpec::new().set_bg(Some(Color::Rgb(200, 200, 200))))?;
                 write!(stream, "     ")?;
                 stream.reset()?;
             } else {
@@ -52,7 +50,7 @@ fn write_state(s: &State, stream: &mut StandardStream) -> io::Result<()> {
 }
 
 fn print_state(s: &State) {
-    write_state(s, &mut StandardStream::stdout(ColorChoice::AlwaysAnsi))
+    write_state(s, &mut StandardStream::stdout(ColorChoice::Always))
         .expect("could not print colored state");
 }
 
