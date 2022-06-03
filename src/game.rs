@@ -4,209 +4,15 @@
 //! packed representation (where a state is a single u64 and each cell is 4
 //! bits).
 
+mod row;
+
 use std::fmt;
 
 use rand::prelude::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-struct Row([u8; 4]);
-
-impl Row {
-    #[cfg(test)]
-    /// The logic that shift_left is supposed to implement.
-    fn shift_left_spec(&self) -> Self {
-        // move the non-zero elements to the front
-        let mut els: Vec<u8> = self
-            .0
-            .iter()
-            .filter_map(|&x| if x > 0 { Some(x) } else { None })
-            .collect();
-        // pad with zeros so els.len() == 4
-        while els.len() < 4 {
-            els.push(0);
-        }
-        // look at i and i+1 in a sliding window
-        let mut i = 0;
-        while i + 1 < 4 {
-            // collapse adjacent equal elements
-            if els[i] != 0 && els[i] == els[i + 1] {
-                // increment i (adding two equal powers of two means incrementing the exponent)
-                els[i] += 1;
-                // remove the extra copy and add a 0 to the end
-                els.remove(i + 1);
-                els.push(0);
-                // check again without incrementing i, in case another merge is
-                // needed at this position
-                continue;
-            }
-            i += 1;
-        }
-        // turn els into an array
-        let mut new_row = [0u8; 4];
-        new_row.clone_from_slice(&els);
-        Row(new_row)
-    }
-
-    /// Shift the row's elements to the left and collapse tiles together.
-    ///
-    /// This is extremely performance-critical and is thus written imperatively
-    /// with no allocations.
-    ///
-    /// Honestly, I don't understand this code - it was written by fiddling with
-    /// the logic and indices until the tests passed (which compare against the
-    /// spec above).
-    fn shift_left(&self) -> Self {
-        let mut els = self.0;
-        // current index
-        let mut i = 0;
-        // next non-zero
-        let mut j = 0;
-        while j < 4 && els[j] == 0 {
-            j += 1;
-        }
-        // while we have non-zeros to process
-        while j < 4 {
-            // move the next non-zero to i
-            let tmp = els[j];
-            els[j] = 0;
-            els[i] = tmp;
-            j += 1;
-            // if there's a previous element, try to collapse with it
-            if i > 0 && els[i] == els[i - 1] {
-                els[i - 1] += 1;
-                els[i] = 0;
-                // re-merge at same position
-                i -= 1;
-            }
-            while j < 4 && els[j] == 0 {
-                j += 1;
-            }
-            i += 1;
-        }
-        Row(els)
-    }
-
-    #[inline]
-    fn reverse(&self) -> Self {
-        let row = self.0;
-        Row([row[3], row[2], row[1], row[0]])
-    }
-
-    fn shift_right(&self) -> Self {
-        self.reverse().shift_left().reverse()
-    }
-
-    fn empty(&self) -> Vec<u8> {
-        let mut indices = Vec::new();
-        for i in 0..4 {
-            if self.0[i] == 0 {
-                indices.push(i as u8);
-            }
-        }
-        indices
-    }
-
-    fn get(&self, i: usize) -> u8 {
-        self.0[i]
-    }
-
-    /// Add a tile
-    ///
-    /// Should only be used to add tiles to empty cells.
-    fn add(&mut self, i: usize, x: u8) {
-        assert_eq!(0, self.0[i]);
-        self.0[i] = x;
-    }
-}
-
-#[cfg(test)]
-mod row_tests {
-    use quickcheck::{quickcheck, Arbitrary, Gen};
-
-    use super::Row;
-
-    impl Arbitrary for Row {
-        fn arbitrary(g: &mut Gen) -> Row {
-            Row([
-                u8::arbitrary(g) / 2,
-                u8::arbitrary(g) / 2,
-                u8::arbitrary(g) / 2,
-                u8::arbitrary(g) / 2,
-            ])
-        }
-    }
-
-    #[test]
-    fn reverse() {
-        assert_eq!(Row([3, 2, 1, 0]), Row([0, 1, 2, 3]).reverse());
-        assert_eq!(Row([0, 1, 2, 3]), Row([0, 1, 2, 3]).reverse().reverse());
-    }
-
-    #[test]
-    fn no_collapsing() {
-        assert_eq!(Row([1, 2, 3, 0]), Row([0, 1, 2, 3]).shift_left());
-        assert_eq!(Row([1, 0, 0, 0]), Row([0, 0, 1, 0]).shift_left());
-        assert_eq!(Row([1, 0, 0, 0]), Row([0, 0, 0, 1]).shift_left());
-        assert_eq!(Row([5, 3, 0, 0]), Row([0, 5, 0, 3]).shift_left());
-    }
-
-    #[test]
-    fn shifts() {
-        for (shifted, r) in vec![
-            // simple, no-collapse tests
-            (Row([1, 2, 3, 0]), Row([0, 1, 2, 3])),
-            (Row([1, 0, 0, 0]), Row([0, 0, 0, 1])),
-            (Row([5, 3, 0, 0]), Row([0, 5, 0, 3])),
-            // collapsing
-            (Row([2, 0, 0, 0]), Row([0, 1, 0, 1])),
-            (Row([4, 6, 0, 0]), Row([4, 5, 0, 5])),
-            (Row([2, 2, 0, 0]), Row([1, 1, 1, 1])),
-            (Row([2, 1, 0, 0]), Row([1, 1, 1, 0])),
-            (Row([2, 1, 0, 0]), Row([0, 1, 1, 1])),
-            (Row([3, 2, 0, 0]), Row([1, 1, 2, 2])),
-            (Row([4, 5, 0, 0]), Row([2, 2, 3, 5])),
-            (Row([3, 5, 0, 0]), Row([2, 2, 4, 4])),
-            // bunch of unchanged examples
-            (Row([0, 0, 0, 0]), Row([0, 0, 0, 0])),
-            (Row([1, 0, 0, 0]), Row([1, 0, 0, 0])),
-            (Row([2, 3, 2, 0]), Row([2, 3, 2, 0])),
-            (Row([3, 4, 5, 3]), Row([3, 4, 5, 3])),
-        ]
-        .into_iter()
-        {
-            assert_eq!(shifted, r.shift_left(), "{:?} left shift is wrong", r);
-            assert_eq!(
-                r.reverse().shift_left().reverse(),
-                r.shift_right(),
-                "{:?} shifted wrong",
-                r
-            );
-            assert_eq!(
-                r.shift_left_spec(),
-                r.shift_left(),
-                "{:?} left shift doesn't match spec",
-                r
-            )
-        }
-    }
-
-    #[test]
-    fn prop_shift_left_spec() {
-        fn prop(r: Row) -> bool {
-            r.shift_left_spec() == r.shift_left()
-        }
-        quickcheck(prop as fn(Row) -> bool);
-    }
-
-    #[test]
-    fn empty() {
-        assert_eq!(vec![0, 1, 2, 3], Row([0, 0, 0, 0]).empty());
-        assert_eq!(vec![1, 2], Row([3, 0, 0, 2]).empty());
-        assert_eq!(Vec::<u8>::new(), Row([1, 3, 2, 1]).empty());
-    }
-}
+use row::Row;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct State([Row; 4]);
@@ -228,8 +34,7 @@ impl Move {
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for row in self.0.iter() {
-            let row = row.0;
-            writeln!(f, "{:>2} {:>2} {:>2} {:>2}", row[0], row[1], row[2], row[3])?;
+            writeln!(f, "{row}")?;
         }
         Ok(())
     }
@@ -239,6 +44,16 @@ pub const FOUR_SPAWN_PROB: f64 = 0.1;
 pub const TWO_SPAWN_PROB: f64 = 1.0 - FOUR_SPAWN_PROB;
 
 impl State {
+    #[cfg(test)]
+    fn new(els: [[u8; 4]; 4]) -> State {
+        State([
+            Row::from_arr(els[0]),
+            Row::from_arr(els[1]),
+            Row::from_arr(els[2]),
+            Row::from_arr(els[3]),
+        ])
+    }
+
     /// Get a cell by linear index (in 0..16).
     fn get(&self, i: usize) -> u8 {
         self.0[i / 4].get(i % 4)
@@ -364,7 +179,7 @@ impl State {
 }
 
 #[cfg(test)]
-mod state_tests {
+mod tests {
 
     use super::{Move, Row, State};
     use quickcheck::{quickcheck, Arbitrary, Gen};
@@ -382,28 +197,13 @@ mod state_tests {
 
     #[test]
     fn rotate() {
-        let s = State([
-            Row([0, 1, 2, 3]),
-            Row([4, 0, 0, 0]),
-            Row([8, 0, 0, 0]),
-            Row([12, 0, 0, 0]),
-        ]);
+        let s = State::new([[0, 1, 2, 3], [4, 0, 0, 0], [8, 0, 0, 0], [12, 0, 0, 0]]);
         assert_eq!(
-            State([
-                Row([12, 8, 4, 0]),
-                Row([0, 0, 0, 1]),
-                Row([0, 0, 0, 2]),
-                Row([0, 0, 0, 3]),
-            ]),
+            State::new([[12, 8, 4, 0], [0, 0, 0, 1], [0, 0, 0, 2], [0, 0, 0, 3],]),
             s.rotate_right()
         );
         assert_eq!(
-            State([
-                Row([3, 0, 0, 0]),
-                Row([2, 0, 0, 0]),
-                Row([1, 0, 0, 0]),
-                Row([0, 4, 8, 12]),
-            ]),
+            State::new([[3, 0, 0, 0], [2, 0, 0, 0], [1, 0, 0, 0], [0, 4, 8, 12],]),
             s.rotate_left()
         )
     }
@@ -427,58 +227,27 @@ mod state_tests {
         assert_eq!(
             // these are linear indices, but compute them here for readability
             vec![index(0, 1), index(0, 2), index(1, 0), index(3, 3)],
-            State([
-                Row([1, 0, 0, 2]),
-                Row([0, 2, 1, 3]),
-                Row([3, 4, 2, 5]),
-                Row([1, 2, 1, 0]),
-            ])
-            .empty()
+            State::new([[1, 0, 0, 2], [0, 2, 1, 3], [3, 4, 2, 5], [1, 2, 1, 0],]).empty()
         )
     }
 
     #[test]
     fn test_moves() {
-        let s = State([
-            Row([0, 0, 0, 0]),
-            Row([0, 1, 0, 0]),
-            Row([0, 0, 0, 0]),
-            Row([0, 0, 0, 0]),
-        ]);
+        let s = State::new([[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]);
         assert_eq!(
-            State([
-                Row([0, 0, 0, 0]),
-                Row([1, 0, 0, 0]),
-                Row([0, 0, 0, 0]),
-                Row([0, 0, 0, 0]),
-            ]),
+            State::new([[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0],]),
             s.make_move(Move::Left),
         );
         assert_eq!(
-            State([
-                Row([0, 0, 0, 0]),
-                Row([0, 0, 0, 1]),
-                Row([0, 0, 0, 0]),
-                Row([0, 0, 0, 0]),
-            ]),
+            State::new([[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0],]),
             s.make_move(Move::Right),
         );
         assert_eq!(
-            State([
-                Row([0, 1, 0, 0]),
-                Row([0, 0, 0, 0]),
-                Row([0, 0, 0, 0]),
-                Row([0, 0, 0, 0]),
-            ]),
+            State::new([[0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0],]),
             s.make_move(Move::Up),
         );
         assert_eq!(
-            State([
-                Row([0, 0, 0, 0]),
-                Row([0, 0, 0, 0]),
-                Row([0, 0, 0, 0]),
-                Row([0, 1, 0, 0]),
-            ]),
+            State::new([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 1, 0, 0],]),
             s.make_move(Move::Down),
         );
     }
@@ -493,12 +262,7 @@ mod state_tests {
 ",
             format!(
                 "{}",
-                State([
-                    Row([0, 1, 2, 3]),
-                    Row([4, 5, 6, 7]),
-                    Row([8, 9, 10, 11]),
-                    Row([12, 13, 14, 15]),
-                ])
+                State::new([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15],])
             )
         )
     }
