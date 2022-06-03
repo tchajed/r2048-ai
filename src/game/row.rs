@@ -113,10 +113,10 @@ mod tests {
     impl Arbitrary for ArrayRow {
         fn arbitrary(g: &mut Gen) -> ArrayRow {
             ArrayRow([
-                u8::arbitrary(g) / 2,
-                u8::arbitrary(g) / 2,
-                u8::arbitrary(g) / 2,
-                u8::arbitrary(g) / 2,
+                u8::arbitrary(g) & 0xf,
+                u8::arbitrary(g) & 0xf,
+                u8::arbitrary(g) & 0xf,
+                u8::arbitrary(g) & 0xf,
             ])
         }
     }
@@ -231,5 +231,142 @@ mod tests {
         assert_eq!(vec![0, 1, 2, 3], ArrayRow([0, 0, 0, 0]).empty());
         assert_eq!(vec![1, 2], ArrayRow([3, 0, 0, 2]).empty());
         assert_eq!(Vec::<u8>::new(), ArrayRow([1, 3, 2, 1]).empty());
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct CachedRow {
+    num: u16,
+}
+
+// document (in an unchecked way) when values are supposed to be half-bytes
+type U4 = u8;
+
+impl CachedRow {
+    #[inline]
+    fn geti(&self, i: usize) -> U4 {
+        ((self.num >> (i * 4)) & 0xf) as U4
+    }
+
+    fn to_array(&self) -> ArrayRow {
+        ArrayRow([self.geti(0), self.geti(1), self.geti(2), self.geti(3)])
+    }
+
+    fn from_array(r: ArrayRow) -> Self {
+        let r = r.0;
+        let num = ((r[3] as u16) << 12)
+            | ((r[2] as u16) << 8)
+            | ((r[1] as u16) << 4)
+            | ((r[0] as u16) << 0);
+        Self { num }
+    }
+}
+
+type CacheTable = Box<[CachedRow; 65536]>;
+
+struct CachedRowTable {
+    shift_left: CacheTable,
+    shift_right: CacheTable,
+}
+
+lazy_static! {
+    static ref CACHED_ROWS: CachedRowTable = CachedRowTable::new();
+}
+
+impl CachedRowTable {
+    fn new() -> Self {
+        let mut shift_left: CacheTable = vec![CachedRow::default(); 65536]
+            .into_boxed_slice()
+            .try_into()
+            .unwrap();
+        let mut shift_right: CacheTable = vec![CachedRow::default(); 65536]
+            .into_boxed_slice()
+            .try_into()
+            .unwrap();
+        for i in 0..65536 {
+            let r = CachedRow { num: i as u16 }.to_array();
+            shift_left[i] = CachedRow::from_array(r.shift_left());
+            shift_right[i] = CachedRow::from_array(r.shift_right());
+        }
+        Self {
+            shift_left,
+            shift_right,
+        }
+    }
+}
+
+impl Row for CachedRow {
+    fn shift_left(&self) -> Self {
+        CACHED_ROWS.shift_left[self.num as usize]
+    }
+
+    fn shift_right(&self) -> Self {
+        CACHED_ROWS.shift_right[self.num as usize]
+    }
+
+    fn empty(&self) -> Vec<u8> {
+        let mut idxs = Vec::new();
+        for i in 0..4 {
+            if self.geti(i) == 0 {
+                idxs.push(i as u8);
+            }
+        }
+        idxs
+    }
+
+    fn get(&self, i: usize) -> u8 {
+        self.geti(i)
+    }
+
+    fn add(&mut self, i: usize, x: u8) {
+        debug_assert!(x < 16, "{} will not fit in a CachedRow", x);
+        self.num |= (x << (4 * i)) as u16;
+    }
+}
+
+#[cfg(test)]
+mod cached_tests {
+    use super::{ArrayRow, CachedRow, Row};
+    use quickcheck::quickcheck;
+
+    #[test]
+    fn prop_to_from_cached() {
+        fn prop(r: ArrayRow) -> bool {
+            CachedRow::from_array(r).to_array() == r
+        }
+        quickcheck(prop as fn(ArrayRow) -> bool);
+    }
+
+    #[test]
+    fn compare_to_array_row() {
+        let rs: Vec<[u8; 4]> = vec![
+            [3, 4, 10, 0],
+            [4, 3, 0, 0],
+            [0, 0, 1, 0],
+            [3, 3, 4, 5],
+            [5, 2, 3, 3],
+        ];
+        for r in rs.into_iter() {
+            let row = ArrayRow(r);
+            let r = CachedRow::from_array(row);
+            assert_eq!(row, r.to_array(), "row does not even roundtrip");
+            for i in 0..4 {
+                assert_eq!(
+                    row.shift_left().get(i),
+                    r.shift_left().get(i),
+                    "shift left is wrong for {:?} at i={i} (spec: {:?} code: {:?})",
+                    row,
+                    row.shift_left(),
+                    r.shift_left().to_array(),
+                );
+                assert_eq!(
+                    row.shift_right().get(i),
+                    r.shift_right().get(i),
+                    "shift right is wrong for {:?} at i={i}",
+                    row,
+                );
+            }
+            assert_eq!(row.empty(), r.empty(), "empty is wrong for {}", row);
+        }
     }
 }

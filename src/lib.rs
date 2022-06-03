@@ -12,6 +12,9 @@ use crate::game::Game;
 #[macro_use]
 extern crate static_assertions;
 
+#[macro_use]
+extern crate lazy_static;
+
 pub mod ai;
 pub mod game;
 

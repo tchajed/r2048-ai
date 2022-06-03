@@ -591,6 +591,7 @@ dependencies = [
  "clap 3.1.18",
  "clearscreen",
  "criterion",
+ "lazy_static",
  "quickcheck",
  "rand 0.8.5",
  "static_assertions",
