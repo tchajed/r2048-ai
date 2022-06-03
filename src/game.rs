@@ -34,6 +34,7 @@ impl Row {
         Row(new_row)
     }
 
+    #[inline]
     fn reverse(&self) -> Self {
         let row = self.0;
         Row([row[3], row[2], row[1], row[0]])
@@ -87,7 +88,12 @@ mod row_tests {
         .into_iter()
         {
             assert_eq!(shifted, r.shift_left());
-            assert_eq!(r.reverse().shift_right().reverse(), r.shift_left());
+            assert_eq!(
+                r.reverse().shift_left().reverse(),
+                r.shift_right(),
+                "{:?} shifted wrong",
+                r
+            );
         }
     }
 
