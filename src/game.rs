@@ -12,10 +12,10 @@ use rand::prelude::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 
-use row::{GenRow, Row};
+use row::{ArrayRow, Row};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct State([Row; 4]);
+pub struct State([ArrayRow; 4]);
 
 assert_eq_size!([u8; 16], State);
 
@@ -47,10 +47,10 @@ impl State {
     #[cfg(test)]
     fn new(els: [[u8; 4]; 4]) -> State {
         State([
-            Row::from_arr(els[0]),
-            Row::from_arr(els[1]),
-            Row::from_arr(els[2]),
-            Row::from_arr(els[3]),
+            ArrayRow::from_arr(els[0]),
+            ArrayRow::from_arr(els[1]),
+            ArrayRow::from_arr(els[2]),
+            ArrayRow::from_arr(els[3]),
         ])
     }
 
@@ -181,16 +181,16 @@ impl State {
 #[cfg(test)]
 mod tests {
 
-    use super::{Move, Row, State};
+    use super::{ArrayRow, Move, State};
     use quickcheck::{quickcheck, Arbitrary, Gen};
 
     impl Arbitrary for State {
         fn arbitrary(g: &mut Gen) -> State {
             dbg!(State([
-                Row::arbitrary(g),
-                Row::arbitrary(g),
-                Row::arbitrary(g),
-                Row::arbitrary(g),
+                ArrayRow::arbitrary(g),
+                ArrayRow::arbitrary(g),
+                ArrayRow::arbitrary(g),
+                ArrayRow::arbitrary(g),
             ]))
         }
     }

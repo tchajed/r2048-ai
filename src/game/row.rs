@@ -1,6 +1,6 @@
 use std::fmt;
 
-pub trait GenRow {
+pub trait Row {
     fn shift_left(&self) -> Self;
     fn shift_right(&self) -> Self;
     fn empty(&self) -> Vec<u8>;
@@ -9,9 +9,9 @@ pub trait GenRow {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Row([u8; 4]);
+pub struct ArrayRow([u8; 4]);
 
-impl fmt::Display for Row {
+impl fmt::Display for ArrayRow {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let row = self.0;
         write!(f, "{:>2} {:>2} {:>2} {:>2}", row[0], row[1], row[2], row[3])?;
@@ -19,16 +19,16 @@ impl fmt::Display for Row {
     }
 }
 
-impl Row {
+impl ArrayRow {
     #[inline]
     // helper for implementing shift_right in terms of shift_left
     fn reverse(&self) -> Self {
         let row = self.0;
-        Row([row[3], row[2], row[1], row[0]])
+        ArrayRow([row[3], row[2], row[1], row[0]])
     }
 }
 
-impl GenRow for Row {
+impl Row for ArrayRow {
     /// Shift the row's elements to the left and collapse tiles together.
     fn shift_left(&self) -> Self {
         // This is extremely performance-critical and is thus written imperatively
@@ -64,7 +64,7 @@ impl GenRow for Row {
             }
             i += 1;
         }
-        Row(els)
+        ArrayRow(els)
     }
 
     fn shift_right(&self) -> Self {
@@ -98,11 +98,11 @@ impl GenRow for Row {
 mod tests {
     use quickcheck::{quickcheck, Arbitrary, Gen};
 
-    use super::{GenRow, Row};
+    use super::{ArrayRow, Row};
 
-    impl Arbitrary for Row {
-        fn arbitrary(g: &mut Gen) -> Row {
-            Row([
+    impl Arbitrary for ArrayRow {
+        fn arbitrary(g: &mut Gen) -> ArrayRow {
+            ArrayRow([
                 u8::arbitrary(g) / 2,
                 u8::arbitrary(g) / 2,
                 u8::arbitrary(g) / 2,
@@ -111,8 +111,8 @@ mod tests {
         }
     }
 
-    impl Row {
-        pub fn from_arr(xs: [u8; 4]) -> Row {
+    impl ArrayRow {
+        pub fn from_arr(xs: [u8; 4]) -> ArrayRow {
             Self(xs)
         }
 
@@ -147,45 +147,48 @@ mod tests {
             // turn els into an array
             let mut new_row = [0u8; 4];
             new_row.clone_from_slice(&els);
-            Row(new_row)
+            ArrayRow(new_row)
         }
     }
 
     #[test]
     fn reverse() {
-        assert_eq!(Row([3, 2, 1, 0]), Row([0, 1, 2, 3]).reverse());
-        assert_eq!(Row([0, 1, 2, 3]), Row([0, 1, 2, 3]).reverse().reverse());
+        assert_eq!(ArrayRow([3, 2, 1, 0]), ArrayRow([0, 1, 2, 3]).reverse());
+        assert_eq!(
+            ArrayRow([0, 1, 2, 3]),
+            ArrayRow([0, 1, 2, 3]).reverse().reverse()
+        );
     }
 
     #[test]
     fn no_collapsing() {
-        assert_eq!(Row([1, 2, 3, 0]), Row([0, 1, 2, 3]).shift_left());
-        assert_eq!(Row([1, 0, 0, 0]), Row([0, 0, 1, 0]).shift_left());
-        assert_eq!(Row([1, 0, 0, 0]), Row([0, 0, 0, 1]).shift_left());
-        assert_eq!(Row([5, 3, 0, 0]), Row([0, 5, 0, 3]).shift_left());
+        assert_eq!(ArrayRow([1, 2, 3, 0]), ArrayRow([0, 1, 2, 3]).shift_left());
+        assert_eq!(ArrayRow([1, 0, 0, 0]), ArrayRow([0, 0, 1, 0]).shift_left());
+        assert_eq!(ArrayRow([1, 0, 0, 0]), ArrayRow([0, 0, 0, 1]).shift_left());
+        assert_eq!(ArrayRow([5, 3, 0, 0]), ArrayRow([0, 5, 0, 3]).shift_left());
     }
 
     #[test]
     fn shifts() {
         for (shifted, r) in vec![
             // simple, no-collapse tests
-            (Row([1, 2, 3, 0]), Row([0, 1, 2, 3])),
-            (Row([1, 0, 0, 0]), Row([0, 0, 0, 1])),
-            (Row([5, 3, 0, 0]), Row([0, 5, 0, 3])),
+            (ArrayRow([1, 2, 3, 0]), ArrayRow([0, 1, 2, 3])),
+            (ArrayRow([1, 0, 0, 0]), ArrayRow([0, 0, 0, 1])),
+            (ArrayRow([5, 3, 0, 0]), ArrayRow([0, 5, 0, 3])),
             // collapsing
-            (Row([2, 0, 0, 0]), Row([0, 1, 0, 1])),
-            (Row([4, 6, 0, 0]), Row([4, 5, 0, 5])),
-            (Row([2, 2, 0, 0]), Row([1, 1, 1, 1])),
-            (Row([2, 1, 0, 0]), Row([1, 1, 1, 0])),
-            (Row([2, 1, 0, 0]), Row([0, 1, 1, 1])),
-            (Row([3, 2, 0, 0]), Row([1, 1, 2, 2])),
-            (Row([4, 5, 0, 0]), Row([2, 2, 3, 5])),
-            (Row([3, 5, 0, 0]), Row([2, 2, 4, 4])),
+            (ArrayRow([2, 0, 0, 0]), ArrayRow([0, 1, 0, 1])),
+            (ArrayRow([4, 6, 0, 0]), ArrayRow([4, 5, 0, 5])),
+            (ArrayRow([2, 2, 0, 0]), ArrayRow([1, 1, 1, 1])),
+            (ArrayRow([2, 1, 0, 0]), ArrayRow([1, 1, 1, 0])),
+            (ArrayRow([2, 1, 0, 0]), ArrayRow([0, 1, 1, 1])),
+            (ArrayRow([3, 2, 0, 0]), ArrayRow([1, 1, 2, 2])),
+            (ArrayRow([4, 5, 0, 0]), ArrayRow([2, 2, 3, 5])),
+            (ArrayRow([3, 5, 0, 0]), ArrayRow([2, 2, 4, 4])),
             // bunch of unchanged examples
-            (Row([0, 0, 0, 0]), Row([0, 0, 0, 0])),
-            (Row([1, 0, 0, 0]), Row([1, 0, 0, 0])),
-            (Row([2, 3, 2, 0]), Row([2, 3, 2, 0])),
-            (Row([3, 4, 5, 3]), Row([3, 4, 5, 3])),
+            (ArrayRow([0, 0, 0, 0]), ArrayRow([0, 0, 0, 0])),
+            (ArrayRow([1, 0, 0, 0]), ArrayRow([1, 0, 0, 0])),
+            (ArrayRow([2, 3, 2, 0]), ArrayRow([2, 3, 2, 0])),
+            (ArrayRow([3, 4, 5, 3]), ArrayRow([3, 4, 5, 3])),
         ]
         .into_iter()
         {
@@ -207,16 +210,16 @@ mod tests {
 
     #[test]
     fn prop_shift_left_spec() {
-        fn prop(r: Row) -> bool {
+        fn prop(r: ArrayRow) -> bool {
             r.shift_left_spec() == r.shift_left()
         }
-        quickcheck(prop as fn(Row) -> bool);
+        quickcheck(prop as fn(ArrayRow) -> bool);
     }
 
     #[test]
     fn empty() {
-        assert_eq!(vec![0, 1, 2, 3], Row([0, 0, 0, 0]).empty());
-        assert_eq!(vec![1, 2], Row([3, 0, 0, 2]).empty());
-        assert_eq!(Vec::<u8>::new(), Row([1, 3, 2, 1]).empty());
+        assert_eq!(vec![0, 1, 2, 3], ArrayRow([0, 0, 0, 0]).empty());
+        assert_eq!(vec![1, 2], ArrayRow([3, 0, 0, 2]).empty());
+        assert_eq!(Vec::<u8>::new(), ArrayRow([1, 3, 2, 1]).empty());
     }
 }
