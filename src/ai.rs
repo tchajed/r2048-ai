@@ -99,7 +99,7 @@ fn state_tiles(s: &State) -> weight::Matrix {
 
 /// Score a terminal state using a weight matrix that encourages tiles to be in
 /// one corner.
-pub(crate) fn weight_score(s: &State) -> f64 {
+pub fn weight_score(s: &State) -> f64 {
     let tiles: [f64; 16] = state_tiles(s);
     weight::W_MATRICES
         .iter()
@@ -109,13 +109,13 @@ pub(crate) fn weight_score(s: &State) -> f64 {
 }
 
 /// Score a state just using the total value of all tiles, without regard to placement.
-pub(crate) fn sum_tiles_score(s: &State) -> f64 {
+pub fn sum_tiles_score(s: &State) -> f64 {
     (0..16).map(|i| s.tile(i) as f64).sum()
 }
 
 fn expectimax_score<ScoreF>(s: &State, search_depth: u32, terminal_score: ScoreF) -> f64
 where
-    ScoreF: Fn(&State) -> f64 + 'static + Clone,
+    ScoreF: Fn(&State) -> f64 + 'static + Copy,
 {
     if search_depth == 0 {
         return terminal_score(s);
@@ -135,7 +135,7 @@ where
     for i in poss.into_iter() {
         for (p, x) in [(State::TWO_SPAWN_PROB, 1), (State::FOUR_SPAWN_PROB, 2)] {
             let next_s = state_place(s, i, x);
-            weighted_sum += p * expectimax_best(&next_s, search_depth - 1, terminal_score.clone())
+            weighted_sum += p * expectimax_best(&next_s, search_depth - 1, terminal_score)
                 .map(|(_, _, s)| s)
                 .unwrap_or_else(|| terminal_score(s));
         }
@@ -149,15 +149,12 @@ fn expectimax_best<ScoreF>(
     terminal_score: ScoreF,
 ) -> Option<(Move, State, f64)>
 where
-    ScoreF: Fn(&State) -> f64 + 'static + Clone,
+    ScoreF: Fn(&State) -> f64 + 'static + Copy,
 {
-    let scored_moves = s.legal_moves().into_iter().map(|(m, s)| {
-        (
-            m,
-            s,
-            expectimax_score(&s, search_depth, terminal_score.clone()),
-        )
-    });
+    let scored_moves = s
+        .legal_moves()
+        .into_iter()
+        .map(|(m, s)| (m, s, expectimax_score(&s, search_depth, terminal_score)));
     scored_moves.max_by(|&(_, _, score1), &(_, _, score2)| float_cmp(score1, score2))
 }
 
@@ -167,7 +164,7 @@ fn expectimax_move<ScoreF>(
     terminal_score: ScoreF,
 ) -> Option<(Move, State)>
 where
-    ScoreF: Fn(&State) -> f64 + 'static + Clone,
+    ScoreF: Fn(&State) -> f64 + 'static + Copy,
 {
     expectimax_best(s, search_depth, terminal_score).map(|(m, s, _)| (m, s))
 }
