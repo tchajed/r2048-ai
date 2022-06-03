@@ -8,10 +8,11 @@ use r2048_ai::game;
 use r2048_ai::game::{ArrayRow, Game};
 use rand::{prelude::StdRng, SeedableRng};
 
-type State = game::State<ArrayRow>;
+type RowType = ArrayRow;
+type State = game::State<RowType>;
 
 fn random_game() -> u32 {
-    let mut mgr = Game::from_rng(StdRng::seed_from_u64(0));
+    let mut mgr: Game<RowType, _> = Game::from_rng(StdRng::seed_from_u64(0));
     let mut move_rng = StdRng::seed_from_u64(2);
     // run for exactly 100 iterations so timing is easy to interpret
     for _ in 0..100 {

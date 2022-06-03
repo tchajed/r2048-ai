@@ -271,22 +271,20 @@ mod tests {
     }
 }
 
-type GameState = State<ArrayRow>;
-
-pub struct Game<R: Rng> {
-    rng: R,
-    s: GameState,
+pub struct Game<R: Row, Rn: Rng> {
+    rng: Rn,
+    s: State<R>,
     moves: u32,
 }
 
-impl Game<ThreadRng> {
+impl<R: Row> Game<R, ThreadRng> {
     pub fn new() -> Self {
         Self::from_rng(ThreadRng::default())
     }
 }
 
-impl<R: Rng> Game<R> {
-    pub fn from_rng(rng: R) -> Self {
+impl<R: Row, Rn: Rng> Game<R, Rn> {
+    pub fn from_rng(rng: Rn) -> Self {
         let mut rng = rng;
         let mut s = State::default();
         // game starts with two tiles
@@ -295,11 +293,11 @@ impl<R: Rng> Game<R> {
         Self { rng, s, moves: 0 }
     }
 
-    pub fn state(&self) -> &GameState {
+    pub fn state(&self) -> &State<R> {
         &self.s
     }
 
-    pub fn next_state(&mut self, s: GameState) {
+    pub fn next_state(&mut self, s: State<R>) {
         self.s = s;
         self.s.rand_add(&mut self.rng);
         self.moves += 1;

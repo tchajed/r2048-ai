@@ -2,7 +2,7 @@
 use std::{io, time::Instant};
 
 use ai::{expectimax_sum_move, expectimax_weight_move, rand_move, smart_depth};
-use game::{ArrayRow, Move};
+use game::{ArrayRow, Move, Row};
 use rand::{prelude::ThreadRng, Rng};
 use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -131,7 +131,7 @@ impl Config {
         return self.won(&mgr);
     }
 
-    pub fn won<R: Rng>(&self, g: &Game<R>) -> bool {
+    pub fn won<R: Row, Rn: Rng>(&self, g: &Game<R, Rn>) -> bool {
         match self.target_score {
             Some(target) => g.state().highest_tile() >= target,
             None => true,
