@@ -113,10 +113,7 @@ pub fn sum_tiles_score(s: &State) -> f64 {
     (0..16).map(|i| s.tile(i) as f64).sum()
 }
 
-fn expectimax_score<ScoreF>(s: &State, search_depth: u32, terminal_score: ScoreF) -> f64
-where
-    ScoreF: Fn(&State) -> f64 + 'static + Copy,
-{
+fn expectimax_score(s: &State, search_depth: u32, terminal_score: &impl Fn(&State) -> f64) -> f64 {
     if search_depth == 0 {
         return terminal_score(s);
     }
@@ -144,14 +141,11 @@ where
     return weighted_sum / total_weight;
 }
 
-fn expectimax_best<ScoreF>(
+fn expectimax_best(
     s: &State,
     search_depth: u32,
-    terminal_score: ScoreF,
-) -> Option<(Move, State, f64)>
-where
-    ScoreF: Fn(&State) -> f64 + 'static + Copy,
-{
+    terminal_score: &impl Fn(&State) -> f64,
+) -> Option<(Move, State, f64)> {
     let scored_moves = s
         .legal_moves()
         .into_iter()
@@ -159,14 +153,11 @@ where
     scored_moves.max_by(|&(_, _, score1), &(_, _, score2)| float_cmp(score1, score2))
 }
 
-fn expectimax_move<ScoreF>(
+fn expectimax_move(
     s: &State,
     search_depth: u32,
-    terminal_score: ScoreF,
-) -> Option<(Move, State)>
-where
-    ScoreF: Fn(&State) -> f64 + 'static + Copy,
-{
+    terminal_score: &impl Fn(&State) -> f64,
+) -> Option<(Move, State)> {
     expectimax_best(s, search_depth, terminal_score).map(|(m, s, _)| (m, s))
 }
 
@@ -177,9 +168,9 @@ pub fn smart_depth(s: &State) -> u32 {
 }
 
 pub fn expectimax_weight_move(s: &State, search_depth: u32) -> Option<(Move, State)> {
-    expectimax_move(s, search_depth, weight_score)
+    expectimax_move(s, search_depth, &weight_score)
 }
 
 pub fn expectimax_sum_move(s: &State, search_depth: u32) -> Option<(Move, State)> {
-    expectimax_move(s, search_depth, sum_tiles_score)
+    expectimax_move(s, search_depth, &sum_tiles_score)
 }
