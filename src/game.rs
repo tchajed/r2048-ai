@@ -12,12 +12,12 @@ use rand::prelude::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 
-use row::{ArrayRow, Row};
+pub use row::{ArrayRow, Row};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct State([ArrayRow; 4]);
+pub struct State<R: Row>([R; 4]);
 
-assert_eq_size!([u8; 16], State);
+assert_eq_size!([u8; 16], State<ArrayRow>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Move {
@@ -31,7 +31,7 @@ impl Move {
     pub const ALL: [Move; 4] = [Move::Left, Move::Right, Move::Up, Move::Down];
 }
 
-impl fmt::Display for State {
+impl<R: Row + fmt::Display> fmt::Display for State<R> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for row in self.0.iter() {
             writeln!(f, "{row}")?;
@@ -43,9 +43,9 @@ impl fmt::Display for State {
 pub const FOUR_SPAWN_PROB: f64 = 0.1;
 pub const TWO_SPAWN_PROB: f64 = 1.0 - FOUR_SPAWN_PROB;
 
-impl State {
+impl State<ArrayRow> {
     #[cfg(test)]
-    fn new(els: [[u8; 4]; 4]) -> State {
+    fn new(els: [[u8; 4]; 4]) -> Self {
         State([
             ArrayRow::from_arr(els[0]),
             ArrayRow::from_arr(els[1]),
@@ -53,7 +53,9 @@ impl State {
             ArrayRow::from_arr(els[3]),
         ])
     }
+}
 
+impl<R: Row> State<R> {
     /// Get a cell by linear index (in 0..16).
     fn get(&self, i: usize) -> u8 {
         self.0[i / 4].get(i % 4)
@@ -156,7 +158,7 @@ impl State {
     }
 
     /// Add a random tile to the board.
-    pub fn rand_add<R: Rng>(&mut self, rng: &mut R) -> &mut Self {
+    pub fn rand_add<Rn: Rng>(&mut self, rng: &mut Rn) -> &mut Self {
         if let Some(&i) = self.empty().choose(rng) {
             let x = if rng.gen_bool(TWO_SPAWN_PROB) {
                 1 // numbers are encoded by their power of 2
@@ -184,8 +186,8 @@ mod tests {
     use super::{ArrayRow, Move, State};
     use quickcheck::{quickcheck, Arbitrary, Gen};
 
-    impl Arbitrary for State {
-        fn arbitrary(g: &mut Gen) -> State {
+    impl Arbitrary for State<ArrayRow> {
+        fn arbitrary(g: &mut Gen) -> Self {
             dbg!(State([
                 ArrayRow::arbitrary(g),
                 ArrayRow::arbitrary(g),
@@ -212,10 +214,10 @@ mod tests {
     #[test]
     #[ignore]
     fn prop_rotate_left3_is_right() {
-        fn prop(s: State) -> bool {
+        fn prop(s: State<ArrayRow>) -> bool {
             s.rotate_left().rotate_left().rotate_left() == s
         }
-        quickcheck(prop as fn(State) -> bool);
+        quickcheck(prop as fn(State<ArrayRow>) -> bool);
     }
 
     fn index(i: usize, j: usize) -> u8 {
@@ -270,7 +272,7 @@ mod tests {
 
 pub struct Game<R: Rng> {
     rng: R,
-    s: State,
+    s: State<ArrayRow>,
     moves: u32,
 }
 
@@ -290,11 +292,11 @@ impl<R: Rng> Game<R> {
         Self { rng, s, moves: 0 }
     }
 
-    pub fn state(&self) -> &State {
+    pub fn state(&self) -> &State<ArrayRow> {
         &self.s
     }
 
-    pub fn next_state(&mut self, s: State) {
+    pub fn next_state(&mut self, s: State<ArrayRow>) {
         self.s = s;
         self.s.rand_add(&mut self.rng);
         self.moves += 1;

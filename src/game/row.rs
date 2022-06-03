@@ -1,6 +1,6 @@
 use std::fmt;
 
-pub trait Row {
+pub trait Row: Copy + Clone + PartialEq + Eq + Default {
     /// Shift the row's elements to the left and collapse tiles together.
     fn shift_left(&self) -> Self;
 
@@ -259,6 +259,13 @@ impl CachedRow {
             | ((r[1] as u16) << 4)
             | ((r[0] as u16) << 0);
         Self { num }
+    }
+}
+
+impl fmt::Display for CachedRow {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // defer to the ArrayRow implementation
+        self.to_array().fmt(f)
     }
 }
 

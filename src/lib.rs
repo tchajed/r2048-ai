@@ -2,7 +2,8 @@
 use std::{io, time::Instant};
 
 use ai::{expectimax_sum_move, expectimax_weight_move, rand_move, smart_depth};
-use game::{Move, State};
+use game::ArrayRow;
+use game::Move;
 use rand::{prelude::ThreadRng, Rng};
 use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -17,6 +18,8 @@ extern crate lazy_static;
 
 pub mod ai;
 pub mod game;
+
+type State = game::State<ArrayRow>;
 
 fn gray_write<S: AsRef<str>>(stream: &mut StandardStream, s: S) -> io::Result<()> {
     _ = stream.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(200, 200, 200))));

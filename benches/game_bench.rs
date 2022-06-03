@@ -4,8 +4,11 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use r2048_ai::ai::{
     expectimax_sum_move, expectimax_weight_move, rand_move, sum_tiles_score, weight_score,
 };
-use r2048_ai::game::{Game, State};
+use r2048_ai::game;
+use r2048_ai::game::{ArrayRow, Game};
 use rand::{prelude::StdRng, SeedableRng};
+
+type State = game::State<ArrayRow>;
 
 fn random_game() -> u32 {
     let mut mgr = Game::from_rng(StdRng::seed_from_u64(0));
