@@ -87,7 +87,7 @@ pub fn sum_tiles_score(s: &State) -> f64 {
     state_weight_product(s, [1f64; 16])
 }
 
-fn expectimax_score<ScoreF>(s: &State, search_depth: usize, terminal_score: ScoreF) -> f64
+fn expectimax_score<ScoreF>(s: &State, search_depth: u32, terminal_score: ScoreF) -> f64
 where
     ScoreF: Fn(&State) -> f64 + 'static + Clone,
 {
@@ -119,7 +119,7 @@ where
 
 fn expectimax_best<ScoreF>(
     s: &State,
-    search_depth: usize,
+    search_depth: u32,
     terminal_score: ScoreF,
 ) -> Option<(Move, State, f64)>
 where
@@ -137,7 +137,7 @@ where
 
 fn expectimax_move<ScoreF>(
     s: &State,
-    search_depth: usize,
+    search_depth: u32,
     terminal_score: ScoreF,
 ) -> Option<(Move, State)>
 where
@@ -146,12 +146,15 @@ where
     expectimax_best(s, search_depth, terminal_score).map(|(m, s, _)| (m, s))
 }
 
-pub fn expectimax_weight_move(s: &State) -> Option<(Move, State)> {
-    let search_depth = if s.empty().len() < 5 { 3 } else { 2 };
+pub fn smart_depth(s: &State) -> u32 {
+    let depth = if s.empty().len() < 5 { 3 } else { 2 };
+    depth
+}
+
+pub fn expectimax_weight_move(s: &State, search_depth: u32) -> Option<(Move, State)> {
     expectimax_move(s, search_depth, weight_score)
 }
 
-pub fn expectimax_sum_move(s: &State) -> Option<(Move, State)> {
-    let search_depth = if s.empty().len() < 5 { 3 } else { 2 };
+pub fn expectimax_sum_move(s: &State, search_depth: u32) -> Option<(Move, State)> {
     expectimax_move(s, search_depth, sum_tiles_score)
 }

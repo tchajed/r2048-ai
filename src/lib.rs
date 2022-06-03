@@ -32,8 +32,8 @@ impl<R: Rng> StateManager<R> {
         Self { rng, s, moves: 0 }
     }
 
-    pub fn state(&self) -> State {
-        self.s
+    pub fn state(&self) -> &State {
+        &self.s
     }
 
     pub fn next_state(&mut self, s: State) {
