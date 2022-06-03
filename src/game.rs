@@ -107,11 +107,32 @@ impl Row {
         }
         indices
     }
+
+    fn get(&self, i: usize) -> u8 {
+        self.0[i]
+    }
+
+    fn set(&mut self, i: usize, x: u8) {
+        self.0[i] = x;
+    }
 }
 
 #[cfg(test)]
 mod row_tests {
+    use quickcheck::{quickcheck, Arbitrary, Gen};
+
     use super::Row;
+
+    impl Arbitrary for Row {
+        fn arbitrary(g: &mut Gen) -> Row {
+            Row([
+                u8::arbitrary(g),
+                u8::arbitrary(g),
+                u8::arbitrary(g),
+                u8::arbitrary(g),
+            ])
+        }
+    }
 
     #[test]
     fn reverse() {
@@ -168,6 +189,14 @@ mod row_tests {
     }
 
     #[test]
+    fn prop_shift_left_spec() {
+        fn prop(r: Row) -> bool {
+            r.shift_left_spec() == r.shift_left()
+        }
+        quickcheck(prop as fn(Row) -> bool);
+    }
+
+    #[test]
     fn empty() {
         assert_eq!(vec![0, 1, 2, 3], Row([0, 0, 0, 0]).empty());
         assert_eq!(vec![1, 2], Row([3, 0, 0, 2]).empty());
@@ -208,7 +237,7 @@ impl State {
 
     /// Get a cell by linear index (in 0..16).
     fn get(&self, i: usize) -> u8 {
-        self.0[i / 4].0[i % 4]
+        self.0[i / 4].get(i % 4)
     }
 
     /// Get a tile's value by linear index.
@@ -221,8 +250,10 @@ impl State {
 
     /// Set a tile by linear index.
     pub fn set(&mut self, i: usize, x: u8) {
-        self.0[i / 4].0[i % 4] = x;
+        self.0[i / 4].set(i % 4, x);
     }
+
+    const RIGHT_ROTATE_IDX: [usize; 16] = [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3];
 
     /// rotate right
     ///
@@ -230,10 +261,7 @@ impl State {
     fn rotate_right(&self) -> Self {
         let mut new = Self::default();
         // right rotation indices, computed by hand
-        for (i, &idx) in [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3]
-            .iter()
-            .enumerate()
-        {
+        for (i, &idx) in Self::RIGHT_ROTATE_IDX.iter().enumerate() {
             new.set(i, self.get(idx));
         }
         new
@@ -244,10 +272,7 @@ impl State {
     /// internally used to implement up/down movement using only left/right
     fn rotate_left(&self) -> Self {
         let mut new = Self::default();
-        for (i, &idx) in [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3]
-            .iter()
-            .enumerate()
-        {
+        for (i, &idx) in Self::RIGHT_ROTATE_IDX.iter().enumerate() {
             new.set(idx, self.get(i));
         }
         new
@@ -336,6 +361,18 @@ impl State {
 mod state_tests {
 
     use super::{Move, Row, State};
+    use quickcheck::{quickcheck, Arbitrary, Gen};
+
+    impl Arbitrary for State {
+        fn arbitrary(g: &mut Gen) -> State {
+            dbg!(State([
+                Row::arbitrary(g),
+                Row::arbitrary(g),
+                Row::arbitrary(g),
+                Row::arbitrary(g),
+            ]))
+        }
+    }
 
     #[test]
     fn rotate() {
@@ -363,6 +400,16 @@ mod state_tests {
             ]),
             s.rotate_left()
         )
+    }
+
+    // test is broken due to a panic in quickcheck
+    #[test]
+    #[ignore]
+    fn prop_rotate_left3_is_right() {
+        fn prop(s: State) -> bool {
+            s.rotate_left().rotate_left().rotate_left() == s
+        }
+        quickcheck(prop as fn(State) -> bool);
     }
 
     fn index(i: usize, j: usize) -> u8 {

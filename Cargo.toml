@@ -14,6 +14,7 @@ termcolor = "1.1.3"
 
 [dev-dependencies]
 criterion = { version = "0.3.5", features = ["html_reports"] }
+quickcheck = "1.0.3"
 
 [[bench]]
 name = "game_bench"
