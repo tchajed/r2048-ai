@@ -2,8 +2,7 @@
 use std::{io, time::Instant};
 
 use ai::{expectimax_sum_move, expectimax_weight_move, rand_move, smart_depth};
-use game::ArrayRow;
-use game::Move;
+use game::{ArrayRow, Move};
 use rand::{prelude::ThreadRng, Rng};
 use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -36,17 +35,17 @@ fn gray_writeln<S: AsRef<str>>(stream: &mut StandardStream, s: S) -> io::Result<
 }
 
 fn write_state(s: &State, stream: &mut StandardStream) -> io::Result<()> {
-    let sep = format!("+{bar}+{bar}+{bar}+{bar}+", bar = "-----");
+    let sep = format!("+{bar}+{bar}+{bar}+{bar}+", bar = "------");
     gray_writeln(stream, &sep)?;
     for i in 0..4 {
         gray_write(stream, "|")?;
         for j in 0..4 {
             let tile = s.tile(i * 4 + j);
             if tile == 1 {
-                write!(stream, "     ")?;
+                write!(stream, "      ")?;
                 stream.reset()?;
             } else {
-                write!(stream, "{:>4} ", tile)?;
+                write!(stream, "{:>5} ", tile)?;
             }
             gray_write(stream, "|")?;
         }

@@ -12,12 +12,13 @@ use rand::prelude::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 
-pub use row::{ArrayRow, Row};
+pub use row::{ArrayRow, CachedRow, Row};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct State<R: Row>([R; 4]);
 
 assert_eq_size!([u8; 16], State<ArrayRow>);
+assert_eq_size!([u8; 8], State<CachedRow>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Move {
@@ -270,9 +271,11 @@ mod tests {
     }
 }
 
+type GameState = State<ArrayRow>;
+
 pub struct Game<R: Rng> {
     rng: R,
-    s: State<ArrayRow>,
+    s: GameState,
     moves: u32,
 }
 
@@ -292,11 +295,11 @@ impl<R: Rng> Game<R> {
         Self { rng, s, moves: 0 }
     }
 
-    pub fn state(&self) -> &State<ArrayRow> {
+    pub fn state(&self) -> &GameState {
         &self.s
     }
 
-    pub fn next_state(&mut self, s: State<ArrayRow>) {
+    pub fn next_state(&mut self, s: GameState) {
         self.s = s;
         self.s.rand_add(&mut self.rng);
         self.moves += 1;

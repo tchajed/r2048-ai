@@ -281,20 +281,20 @@ lazy_static! {
 }
 
 impl CachedRowTable {
+    fn vec_to_table(v: Vec<CachedRow>) -> CacheTable {
+        assert_eq!(65536, v.len(), "vector is not of cache length");
+        v.into_boxed_slice().try_into().unwrap()
+    }
     fn new() -> Self {
-        let mut shift_left: CacheTable = vec![CachedRow::default(); 65536]
-            .into_boxed_slice()
-            .try_into()
-            .unwrap();
-        let mut shift_right: CacheTable = vec![CachedRow::default(); 65536]
-            .into_boxed_slice()
-            .try_into()
-            .unwrap();
+        let mut shift_left = vec![CachedRow::default(); 65536];
+        let mut shift_right = vec![CachedRow::default(); 65536];
         for i in 0..65536 {
             let r = CachedRow { num: i as u16 }.to_array();
             shift_left[i] = CachedRow::from_array(r.shift_left());
             shift_right[i] = CachedRow::from_array(r.shift_right());
         }
+        let shift_left = Self::vec_to_table(shift_left);
+        let shift_right = Self::vec_to_table(shift_right);
         Self {
             shift_left,
             shift_right,
