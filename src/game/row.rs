@@ -99,7 +99,7 @@ impl Row for ArrayRow {
     }
 
     fn add(&mut self, i: usize, x: u8) {
-        assert_eq!(0, self.0[i]);
+        debug_assert_eq!(0, self.0[i]);
         self.0[i] = x;
     }
 }
