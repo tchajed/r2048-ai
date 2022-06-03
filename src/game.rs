@@ -131,6 +131,7 @@ impl State {
     /// Get a tile's value by linear index.
     ///
     /// This will be the power-of-two seen in the game.
+    #[inline]
     pub fn tile(&self, i: usize) -> u32 {
         2u32.pow(self.get(i).into())
     }
