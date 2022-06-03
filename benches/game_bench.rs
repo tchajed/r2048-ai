@@ -1,5 +1,9 @@
+use std::time::Duration;
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use r2048_ai::ai::{rand_move, sum_tiles_score, weight_score};
+use r2048_ai::ai::{
+    expectimax_sum_move, expectimax_weight_move, rand_move, sum_tiles_score, weight_score,
+};
 use r2048_ai::game::State;
 use r2048_ai::StateManager;
 use rand::{prelude::StdRng, SeedableRng};
@@ -20,13 +24,23 @@ fn random_game() -> u32 {
 
 fn test_state() -> State {
     let mut s = State::default();
-    for i in 0..16 {
-        s.set(i, (i % 4) as u8);
+    let values: Vec<u8> = vec![0, 0, 1, 1, 0, 1, 2, 3, 0, 1, 2, 3, 3, 6, 9, 10];
+    for (i, x) in values.into_iter().enumerate() {
+        s.set(i, x);
     }
     s
 }
 
-fn criterion_benchmark(c: &mut Criterion) {
+fn sparse_state() -> State {
+    let mut s = State::default();
+    let values: Vec<u8> = vec![0, 1, 3, 8, 0, 0, 4, 2, 0, 1, 0, 0, 0, 0, 0, 0];
+    for (i, x) in values.into_iter().enumerate() {
+        s.set(i, x);
+    }
+    s
+}
+
+fn small_criterion_benchmarks(c: &mut Criterion) {
     c.bench_function("random game", |b| b.iter(|| random_game()));
 
     let s = test_state();
@@ -34,5 +48,28 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("weight score", |b| b.iter(|| weight_score(&black_box(s))));
 }
 
-criterion_group!(benches, criterion_benchmark);
-criterion_main!(benches);
+fn expectimax_benchmarks(c: &mut Criterion) {
+    let s = sparse_state();
+    c.bench_function("expectimax sum-2", |b| {
+        b.iter(|| expectimax_sum_move(&black_box(s), 2))
+    });
+    c.bench_function("expectimax weight-2", |b| {
+        b.iter(|| expectimax_weight_move(&black_box(s), 2))
+    });
+
+    let s = test_state();
+    c.bench_function("expectimax sum-3", |b| {
+        b.iter(|| expectimax_sum_move(&black_box(s), 3))
+    });
+    c.bench_function("expectimax weight-3", |b| {
+        b.iter(|| expectimax_weight_move(&black_box(s), 3))
+    });
+}
+
+criterion_group!(microbenches, small_criterion_benchmarks);
+criterion_group!(
+    name = benches;
+    config = Criterion::default().sample_size(30).measurement_time(Duration::from_secs(10));
+    targets = expectimax_benchmarks
+);
+criterion_main!(microbenches, benches);
