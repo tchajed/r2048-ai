@@ -311,6 +311,7 @@ impl Row for CachedRow {
         CACHED_ROWS.shift_right[self.num as usize]
     }
 
+    #[inline]
     fn empty(&self) -> Vec<u8> {
         let mut idxs = Vec::new();
         for i in 0..4 {
