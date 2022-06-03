@@ -1,13 +1,26 @@
 use std::fmt;
 
 pub trait Row {
+    /// Shift the row's elements to the left and collapse tiles together.
     fn shift_left(&self) -> Self;
+
+    /// Shift the row's elements to the right and collapse tiles together.
     fn shift_right(&self) -> Self;
+
+    /// Return the indices (in 0..4) of the empty positions in this row.
     fn empty(&self) -> Vec<u8>;
+
+    /// Get a value by index.
     fn get(&self, i: usize) -> u8;
+
+    /// Add a tile
+    ///
+    /// Should only be used to add tiles to empty cells.
     fn add(&mut self, i: usize, x: u8);
 }
 
+/// ArrowRow implements rows with a fixed-size array of bytes and a fairly
+/// efficient shift algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ArrayRow([u8; 4]);
 
@@ -29,7 +42,6 @@ impl ArrayRow {
 }
 
 impl Row for ArrayRow {
-    /// Shift the row's elements to the left and collapse tiles together.
     fn shift_left(&self) -> Self {
         // This is extremely performance-critical and is thus written imperatively
         // with no allocations.
@@ -71,6 +83,7 @@ impl Row for ArrayRow {
         self.reverse().shift_left().reverse()
     }
 
+    #[inline]
     fn empty(&self) -> Vec<u8> {
         let mut indices = Vec::new();
         for i in 0..4 {
@@ -85,9 +98,6 @@ impl Row for ArrayRow {
         self.0[i]
     }
 
-    /// Add a tile
-    ///
-    /// Should only be used to add tiles to empty cells.
     fn add(&mut self, i: usize, x: u8) {
         assert_eq!(0, self.0[i]);
         self.0[i] = x;
