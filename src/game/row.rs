@@ -254,10 +254,10 @@ impl CachedRow {
 
     fn from_array(r: ArrayRow) -> Self {
         let r = r.0;
-        let num = ((r[3] as u16) << 12)
-            | ((r[2] as u16) << 8)
-            | ((r[1] as u16) << 4)
-            | ((r[0] as u16) << 0);
+        let num = (((r[3] & 0xf) as u16) << 12)
+            | (((r[2] & 0xf) as u16) << 8)
+            | (((r[1] & 0xf) as u16) << 4)
+            | (((r[0] & 0xf) as u16) << 0);
         Self { num }
     }
 }
@@ -327,7 +327,8 @@ impl Row for CachedRow {
 
     fn add(&mut self, i: usize, x: u8) {
         debug_assert!(x < 16, "{} will not fit in a CachedRow", x);
-        self.num |= (x << (4 * i)) as u16;
+        debug_assert!(i < 4, "add is out-of-bounds {}", i);
+        self.num |= (x as u16) << (4 * i);
     }
 }
 
@@ -345,34 +346,64 @@ mod cached_tests {
     }
 
     #[test]
+    fn test_all_roundtrip() {
+        for i in 0..65526 {
+            let r = CachedRow { num: i as u16 };
+            assert_eq!(
+                r,
+                CachedRow::from_array(r.to_array()),
+                "row {:?} handled incorrectly",
+                r.to_array()
+            );
+        }
+    }
+
+    #[test]
+    fn test_add_get() {
+        let mut r = CachedRow::default();
+        r.add(2, 5);
+        r.add(3, 8);
+        assert_eq!(0, r.get(0));
+        assert_eq!(0, r.get(1));
+        assert_eq!(5, r.get(2));
+        assert_eq!(8, r.get(3));
+    }
+
+    #[test]
     fn compare_to_array_row() {
-        let rs: Vec<[u8; 4]> = vec![
+        let rs: Vec<ArrayRow> = vec![
             [3, 4, 10, 0],
             [4, 3, 0, 0],
             [0, 0, 1, 0],
             [3, 3, 4, 5],
             [5, 2, 3, 3],
-        ];
-        for r in rs.into_iter() {
-            let row = ArrayRow(r);
+        ]
+        .iter()
+        .map(|&r| ArrayRow(r))
+        .collect();
+        for &row in rs.iter() {
             let r = CachedRow::from_array(row);
             assert_eq!(row, r.to_array(), "row does not even roundtrip");
-            for i in 0..4 {
-                assert_eq!(
-                    row.shift_left().get(i),
-                    r.shift_left().get(i),
-                    "shift left is wrong for {:?} at i={i} (spec: {:?} code: {:?})",
-                    row,
-                    row.shift_left(),
-                    r.shift_left().to_array(),
-                );
-                assert_eq!(
-                    row.shift_right().get(i),
-                    r.shift_right().get(i),
-                    "shift right is wrong for {:?} at i={i}",
-                    row,
-                );
-            }
+        }
+        for &row in rs.iter() {
+            let row = row.shift_left();
+            let r = CachedRow::from_array(row);
+            assert_eq!(row, r.to_array(), "row does not even roundtrip");
+        }
+        for &row in rs.iter() {
+            let r = CachedRow::from_array(row);
+            assert_eq!(
+                row.shift_left(),
+                r.shift_left().to_array(),
+                "shift left is wrong for {:?}",
+                row
+            );
+            assert_eq!(
+                row.shift_right(),
+                r.shift_right().to_array(),
+                "shift right is wrong for {:?}",
+                row
+            );
             assert_eq!(row.empty(), r.empty(), "empty is wrong for {}", row);
         }
     }
