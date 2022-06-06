@@ -21,7 +21,7 @@ pub fn rand_move<Rn: Rng>(s: &State, rng: &mut Rn) -> Option<(Move, State)> {
 }
 
 mod weight {
-    pub(super) type Matrix = [f64; 16];
+    pub(super) type Matrix = [f32; 16];
 
     // This magical weight matrix is taken from
     // https://codemyroad.wordpress.com/2014/05/14/2048-ai-the-intelligent-bot/.
@@ -53,7 +53,7 @@ mod weight {
         // TODO: would be nice to initialize this in a better way (using a macro
         // probably), we have an initialization expression in terms of the
         // index...
-        let mut new_w = [0f64; 16];
+        let mut new_w = [0f32; 16];
         let mut i = 0;
         while i < 16 {
             new_w[i] = w[RIGHT_ROTATE_IDX[i]];
@@ -63,7 +63,7 @@ mod weight {
     }
 
     const fn transpose(w: Matrix) -> Matrix {
-        let mut new_w = [0f64; 16];
+        let mut new_w = [0f32; 16];
         let mut i = 0;
         while i < 4 {
             let mut j = 0;
@@ -76,13 +76,13 @@ mod weight {
         new_w
     }
 
-    pub(super) fn dot(w1: Matrix, w2: Matrix) -> f64 {
+    pub(super) fn dot(w1: Matrix, w2: Matrix) -> f32 {
         // NOTE: this is actually much more confusing than the imperative version
         w1.iter().zip(w2.iter()).map(|(x1, x2)| x1 * x2).sum()
     }
 }
 
-fn float_cmp(x: f64, y: f64) -> std::cmp::Ordering {
+fn float_cmp(x: f32, y: f32) -> std::cmp::Ordering {
     if x < y {
         Ordering::Less
     } else {
@@ -91,17 +91,17 @@ fn float_cmp(x: f64, y: f64) -> std::cmp::Ordering {
 }
 
 fn state_tiles(s: &State) -> weight::Matrix {
-    let mut tiles = [0f64; 16];
+    let mut tiles = [0f32; 16];
     for (i, tile) in tiles.iter_mut().enumerate() {
-        *tile = s.tile(i) as f64;
+        *tile = s.tile(i) as f32;
     }
     tiles
 }
 
 /// Score a terminal state using a weight matrix that encourages tiles to be in
 /// one corner.
-pub fn weight_score(s: &State) -> f64 {
-    let tiles: [f64; 16] = state_tiles(s);
+pub fn weight_score(s: &State) -> f32 {
+    let tiles: [f32; 16] = state_tiles(s);
     weight::W_MATRICES
         .iter()
         .map(|&w_mat| weight::dot(tiles, w_mat))
@@ -110,11 +110,11 @@ pub fn weight_score(s: &State) -> f64 {
 }
 
 /// Score a state just using the total value of all tiles, without regard to placement.
-pub fn sum_tiles_score(s: &State) -> f64 {
-    (0..16).map(|i| s.tile(i) as f64).sum()
+pub fn sum_tiles_score(s: &State) -> f32 {
+    (0..16).map(|i| s.tile(i) as f32).sum()
 }
 
-fn expectimax_score(s: &State, search_depth: u32, terminal_score: &impl Fn(&State) -> f64) -> f64 {
+fn expectimax_score(s: &State, search_depth: u32, terminal_score: &impl Fn(&State) -> f32) -> f32 {
     if search_depth == 0 {
         return terminal_score(s);
     }
@@ -127,11 +127,14 @@ fn expectimax_score(s: &State, search_depth: u32, terminal_score: &impl Fn(&Stat
 
     // we want to the expected value of the expectimax score over all the random
     // placements that could happen in this state
-    let mut weighted_sum: f64 = 0.0;
+    let mut weighted_sum: f32 = 0.0;
     let poss = s.empty();
-    let total_weight = poss.len() as f64;
+    let total_weight = poss.len() as f32;
     for i in poss.into_iter() {
-        for (p, x) in [(game::TWO_SPAWN_PROB, 1), (game::FOUR_SPAWN_PROB, 2)] {
+        for (p, x) in [
+            (game::TWO_SPAWN_PROB as f32, 1),
+            (game::FOUR_SPAWN_PROB as f32, 2),
+        ] {
             let next_s = state_place(s, i, x);
             weighted_sum += p * expectimax_best(&next_s, search_depth - 1, terminal_score)
                 .map(|(_, _, s)| s)
@@ -144,8 +147,8 @@ fn expectimax_score(s: &State, search_depth: u32, terminal_score: &impl Fn(&Stat
 fn expectimax_best(
     s: &State,
     search_depth: u32,
-    terminal_score: &impl Fn(&State) -> f64,
-) -> Option<(Move, State, f64)> {
+    terminal_score: &impl Fn(&State) -> f32,
+) -> Option<(Move, State, f32)> {
     let scored_moves = s
         .legal_moves()
         .into_iter()
@@ -156,7 +159,7 @@ fn expectimax_best(
 fn expectimax_move(
     s: &State,
     search_depth: u32,
-    terminal_score: &impl Fn(&State) -> f64,
+    terminal_score: &impl Fn(&State) -> f32,
 ) -> Option<(Move, State)> {
     expectimax_best(s, search_depth, terminal_score).map(|(m, s, _)| (m, s))
 }
