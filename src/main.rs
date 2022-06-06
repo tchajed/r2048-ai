@@ -16,6 +16,9 @@ struct Args {
 
     #[clap(short, long)]
     unbounded: bool,
+
+    #[clap(short, long)]
+    no_print: bool,
 }
 
 fn main() {
@@ -39,10 +42,12 @@ fn main() {
     } else {
         Some(args.score)
     };
+    let print = !args.no_print;
 
     let config = Config {
         algorithm,
         target_score,
+        print,
     };
     let win = config.run();
     if !win {

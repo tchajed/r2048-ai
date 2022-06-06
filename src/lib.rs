@@ -75,6 +75,7 @@ pub enum Algorithm {
 pub struct Config {
     pub algorithm: Algorithm,
     pub target_score: Option<u32>,
+    pub print: bool,
 }
 
 impl Config {
@@ -96,27 +97,35 @@ impl Config {
     /// Run runs the game and returns a score and whether or not this is a win.
     pub fn run(&self) -> bool {
         let mut mgr = Game::new();
-        print_state(mgr.state());
+        if self.print {
+            print_state(mgr.state());
+        }
         let start = Instant::now();
         // current estimate
         let mut moves_per_s = 0.0;
         while let Some((_, s)) = self.next_move(mgr.state()) {
             mgr.next_state(s);
 
-            _ = clearscreen::clear();
             let moves = mgr.moves();
             // generate an estimate early on, and then periodically
             if moves == 10 || moves % 50 == 0 {
                 let elapsed_s = start.elapsed().as_secs_f64();
                 moves_per_s = moves as f64 / elapsed_s;
             }
-            println!("  {:>4} {:0.0} moves/s", moves, moves_per_s);
-            print_state(mgr.state());
+            if self.print {
+                _ = clearscreen::clear();
+                println!("  {:>4} {:0.0} moves/s", moves, moves_per_s);
+                print_state(mgr.state());
+            }
             if let Some(target) = self.target_score {
                 if mgr.state().highest_tile() == target {
                     break;
                 }
             }
+        }
+        // if not printing intermediate state, show the final board
+        if !self.print {
+            print_state(mgr.state());
         }
         let elapsed_s = start.elapsed().as_secs_f64();
         let moves_per_s = mgr.moves() as f64 / elapsed_s;
