@@ -263,11 +263,8 @@ impl CachedRow {
 
     #[allow(clippy::identity_op)]
     fn from_array(r: ArrayRow) -> Self {
-        let r = r.0;
-        let num = (((r[3] & 0xf) as u16) << 12)
-            | (((r[2] & 0xf) as u16) << 8)
-            | (((r[1] & 0xf) as u16) << 4)
-            | (((r[0] & 0xf) as u16) << 0);
+        let r = r.0.map(|n| (n & 0xf) as u16);
+        let num = (r[3] << 12) | (r[2] << 8) | (r[1] << 4) | (r[0] << 0);
         Self { num }
     }
 
