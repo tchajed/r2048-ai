@@ -257,10 +257,11 @@ impl CachedRow {
         ((self.num >> (i * 4)) & 0xf) as U4
     }
 
-    fn to_array(&self) -> ArrayRow {
+    fn to_array(self) -> ArrayRow {
         ArrayRow([self.geti(0), self.geti(1), self.geti(2), self.geti(3)])
     }
 
+    #[allow(clippy::identity_op)]
     fn from_array(r: ArrayRow) -> Self {
         let r = r.0;
         let num = (((r[3] & 0xf) as u16) << 12)
