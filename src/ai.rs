@@ -77,8 +77,11 @@ mod weight {
     }
 
     pub(super) fn dot(w1: Matrix, w2: Matrix) -> f32 {
-        // NOTE: this is actually much more confusing than the imperative version
-        w1.iter().zip(w2.iter()).map(|(x1, x2)| x1 * x2).sum()
+        let mut sum: f32 = 0.0;
+        for i in 0..w1.len() {
+            sum += w1[i] * w2[i];
+        }
+        return sum;
     }
 }
 
