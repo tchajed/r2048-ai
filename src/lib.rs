@@ -127,11 +127,12 @@ impl Config {
         if !self.print {
             print_state(mgr.state());
         }
+        let score = mgr.state().highest_tile();
         let elapsed_s = start.elapsed().as_secs_f64();
         let moves_per_s = mgr.moves() as f64 / elapsed_s;
+        println!("score: {score}");
         println!(
-            "score: {score}  moves: {moves}  {moves_per_s:0.0} moves/s",
-            score = mgr.state().highest_tile(),
+            "{moves} moves in {elapsed_s:0.0}s ({moves_per_s:0.0} moves/s)",
             moves = mgr.moves(),
             moves_per_s = moves_per_s,
         );
