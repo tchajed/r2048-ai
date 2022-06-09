@@ -115,18 +115,13 @@ impl Row for ArrayRow {
 
 #[cfg(test)]
 mod tests {
-    use quickcheck::{quickcheck, Arbitrary, Gen};
+    use proptest::prelude::*;
 
     use super::{ArrayRow, Row};
 
-    impl Arbitrary for ArrayRow {
-        fn arbitrary(g: &mut Gen) -> ArrayRow {
-            ArrayRow([
-                u8::arbitrary(g) & 0xf,
-                u8::arbitrary(g) & 0xf,
-                u8::arbitrary(g) & 0xf,
-                u8::arbitrary(g) & 0xf,
-            ])
+    prop_compose! {
+        fn arb_array_row()(r0 in 0u8..16, r1 in 0u8..16, r2 in 0u8..16, r3 in 0u8..16) -> ArrayRow {
+            ArrayRow([r0, r1, r2, r3])
         }
     }
 
@@ -227,12 +222,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn prop_shift_left_spec() {
-        fn prop(r: ArrayRow) -> bool {
-            r.shift_left_spec() == r.shift_left()
+    proptest! {
+        #[test]
+        fn prop_shift_left_spec(r in arb_array_row()) {
+            assert_eq!(r.shift_left_spec(), r.shift_left())
         }
-        quickcheck(prop as fn(ArrayRow) -> bool);
     }
 
     #[test]
@@ -346,24 +340,14 @@ impl Row for CachedRow {
 }
 
 #[cfg(test)]
-mod cached_tests {
+pub(crate) mod cached_tests {
     use super::{ArrayRow, CachedRow, Row};
-    use quickcheck::{quickcheck, Arbitrary, Gen};
+    use proptest::prelude::*;
 
-    impl Arbitrary for CachedRow {
-        fn arbitrary(g: &mut Gen) -> Self {
-            CachedRow {
-                num: u16::arbitrary(g),
-            }
+    prop_compose! {
+        pub fn arb_cached_row()(num in 0u16..=65535) -> CachedRow {
+            CachedRow {num}
         }
-    }
-
-    #[test]
-    fn prop_to_from_cached() {
-        fn prop(r: ArrayRow) -> bool {
-            CachedRow::from_array(r).to_array() == r
-        }
-        quickcheck(prop as fn(ArrayRow) -> bool);
     }
 
     #[test]

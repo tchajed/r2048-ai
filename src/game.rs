@@ -181,18 +181,17 @@ impl State {
 
 #[cfg(test)]
 mod tests {
+    use crate::game::row::cached_tests::arb_cached_row;
 
-    use super::{CachedRow, Move, State};
-    use quickcheck::{quickcheck, Arbitrary, Gen};
+    use super::{Move, State};
+    use proptest::prelude::*;
 
-    impl Arbitrary for State {
-        fn arbitrary(g: &mut Gen) -> Self {
-            dbg!(State([
-                CachedRow::arbitrary(g),
-                CachedRow::arbitrary(g),
-                CachedRow::arbitrary(g),
-                CachedRow::arbitrary(g),
-            ]))
+    prop_compose! {
+        fn arb_state()(r0 in arb_cached_row(),
+                       r1 in arb_cached_row(),
+                       r2 in arb_cached_row(),
+                       r3 in arb_cached_row()) -> State {
+            State([r0, r1, r2, r3])
         }
     }
 
@@ -209,14 +208,11 @@ mod tests {
         )
     }
 
-    // test is broken due to a panic in quickcheck
-    #[test]
-    #[ignore]
-    fn prop_rotate_left3_is_right() {
-        fn prop(s: State) -> bool {
-            s.rotate_left().rotate_left().rotate_left() == s
+    proptest! {
+        #[test]
+        fn prop_rotate_left3_is_right(s in arb_state()) {
+            assert_eq!(s.rotate_left().rotate_left().rotate_left(), s.rotate_right())
         }
-        quickcheck(prop as fn(State) -> bool);
     }
 
     fn index(i: usize, j: usize) -> u8 {
